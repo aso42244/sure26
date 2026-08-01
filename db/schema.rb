@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_01_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -367,9 +367,39 @@ ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
     t.string "currency", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "contribution_amount", precision: 19, scale: 4
     t.index ["budget_id", "category_id"], name: "index_budget_categories_on_budget_id_and_category_id", unique: true
     t.index ["budget_id"], name: "index_budget_categories_on_budget_id"
     t.index ["category_id"], name: "index_budget_categories_on_category_id"
+  end
+
+  create_table "budget_category_funds", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "budget_id", null: false
+    t.uuid "category_id", null: false
+    t.decimal "opening_balance", precision: 19, scale: 4, default: "0.0", null: false
+    t.decimal "contribution", precision: 19, scale: 4, default: "0.0", null: false
+    t.decimal "actual_spend", precision: 19, scale: 4
+    t.decimal "closing_balance", precision: 19, scale: 4
+    t.string "currency", null: false
+    t.datetime "finalized_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["budget_id", "category_id"], name: "index_budget_category_funds_on_budget_id_and_category_id", unique: true
+    t.index ["budget_id"], name: "index_budget_category_funds_on_budget_id"
+    t.index ["category_id"], name: "index_budget_category_funds_on_category_id"
+  end
+
+  create_table "budget_schedules", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.string "cadence", default: "monthly", null: false
+    t.date "anchor_date"
+    t.date "effective_from", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "effective_from"], name: "index_budget_schedules_on_family_id_and_effective_from", unique: true
+    t.index ["family_id"], name: "index_budget_schedules_on_family_id"
+    t.check_constraint "cadence::text = ANY (ARRAY['monthly'::character varying, 'biweekly'::character varying]::text[])", name: "budget_schedules_cadence_valid"
+    t.check_constraint "cadence::text = 'biweekly'::text AND anchor_date IS NOT NULL OR cadence::text <> 'biweekly'::text AND anchor_date IS NULL", name: "budget_schedules_anchor_matches_cadence"
   end
 
   create_table "budgets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -381,8 +411,12 @@ ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
     t.string "currency", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "cadence", default: "monthly", null: false
+    t.date "anchor_date"
     t.index ["family_id", "start_date", "end_date"], name: "index_budgets_on_family_id_and_start_date_and_end_date", unique: true
     t.index ["family_id"], name: "index_budgets_on_family_id"
+    t.check_constraint "cadence::text = ANY (ARRAY['monthly'::character varying, 'biweekly'::character varying]::text[])", name: "budgets_cadence_valid"
+    t.check_constraint "cadence::text = 'biweekly'::text AND anchor_date IS NOT NULL OR cadence::text <> 'biweekly'::text AND anchor_date IS NULL", name: "budgets_anchor_matches_cadence"
   end
 
   create_table "categories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -2339,6 +2373,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
   add_foreign_key "brex_items", "families"
   add_foreign_key "budget_categories", "budgets"
   add_foreign_key "budget_categories", "categories"
+  add_foreign_key "budget_category_funds", "budgets"
+  add_foreign_key "budget_category_funds", "categories"
+  add_foreign_key "budget_schedules", "families"
   add_foreign_key "budgets", "families"
   add_foreign_key "categories", "families"
   add_foreign_key "chats", "users"
