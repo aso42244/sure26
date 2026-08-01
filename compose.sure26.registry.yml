@@ -1,0 +1,128 @@
+# ===========================================================================
+# Sure26 — Portainer stack (pull a prebuilt image from GHCR)
+# ===========================================================================
+#
+# Use this in Portainer on Umbrel (Stacks -> Add stack -> Web editor: paste
+# this file). It pulls the image GitHub Actions publishes to GHCR instead of
+# building from source (Portainer can't reliably build from a repo).
+#
+# Follows the Umbrel + Portainer best practices:
+#   * Named Docker volumes only (bind mounts are lost on Portainer update).
+#   * restart: unless-stopped so containers come back after reboots/updates.
+#   * A single published port (PORT, default 3000) -> reachable at
+#     http://umbrel.local:PORT. Change PORT if it conflicts with another app.
+#
+# Set these as Portainer stack Environment variables (do NOT hardcode them):
+#   SECRET_KEY_BASE    (required)  openssl rand -hex 64
+#   POSTGRES_PASSWORD  (required)  openssl rand -hex 24
+#   SURE_IMAGE         (optional)  defaults to ghcr.io/aso42244/sure26:latest
+#   BUILD_COMMIT_SHA   (optional)  the deployed commit, for the AGPL source link
+#   PORT               (optional)  host port, default 3000
+# ===========================================================================
+
+x-db-env: &db_env
+  POSTGRES_USER: ${POSTGRES_USER:-sure_user}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stack env}
+  POSTGRES_DB: ${POSTGRES_DB:-sure_production}
+
+x-rails-env: &rails_env
+  <<: *db_env
+  SECRET_KEY_BASE: ${SECRET_KEY_BASE:?Set SECRET_KEY_BASE in the stack env}
+  SELF_HOSTED: "true"
+  RAILS_FORCE_SSL: "false"
+  RAILS_ASSUME_SSL: "false"
+  DB_HOST: db
+  DB_PORT: 5432
+  REDIS_URL: redis://redis:6379/1
+  SURE_SOURCE_REPO: ${SURE_SOURCE_REPO:-aso42244/sure26}
+  BUILD_COMMIT_SHA: ${BUILD_COMMIT_SHA:-}
+  OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN:-}
+
+services:
+  web:
+    image: ${SURE_IMAGE:-ghcr.io/aso42244/sure26:latest}
+    pull_policy: always
+    restart: unless-stopped
+    volumes:
+      - app-storage:/rails/storage
+    ports:
+      - ${PORT:-3000}:3000
+    environment:
+      <<: *rails_env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+  worker:
+    image: ${SURE_IMAGE:-ghcr.io/aso42244/sure26:latest}
+    pull_policy: always
+    command: bundle exec sidekiq
+    restart: unless-stopped
+    volumes:
+      - app-storage:/rails/storage
+    environment:
+      <<: *rails_env
+    depends_on:
+      web:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      <<: *db_env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Automated daily database backups into a NAMED volume (survives updates).
+  # Retrieve them with Portainer's volume browser or `docker cp`.
+  backup:
+    image: prodrigestivill/postgres-backup-local
+    restart: unless-stopped
+    volumes:
+      - pg-backups:/backups
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB:-sure_production}
+      - POSTGRES_USER=${POSTGRES_USER:-sure_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stack env} # pipelock:ignore
+      - SCHEDULE=@daily
+      - BACKUP_KEEP_DAYS=7
+      - BACKUP_KEEP_WEEKS=4
+      - BACKUP_KEEP_MONTHS=6
+    depends_on:
+      - db
+
+volumes:
+  app-storage:
+  postgres-data:
+  redis-data:
+  pg-backups:
