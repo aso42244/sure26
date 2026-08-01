@@ -1,0 +1,27 @@
+---
+en:
+  settings:
+    budget_cadences:
+      admin_only: Only an admin can change the budgeting cadence.
+      not_future: A cadence change can only take effect after the current budget period ends.
+      success: Budgeting cadence updated. It applies to future periods only.
+      show:
+        page_title: Budget cadence
+        title: Budget cadence
+        subtitle: Choose how often budget periods start. Changes apply to future periods only.
+        current_label: Current cadence
+        monthly_current: Monthly
+        biweekly_current: "Every 2 weeks, anchored to %{anchor}"
+        effective_dated_warning: Changing the cadence never rewrites past or in-progress budgets. It only changes how future budget periods are generated.
+        cadence_label: Cadence
+        cadence_monthly: Monthly
+        cadence_biweekly: Every 2 weeks (14 days)
+        anchor_label: Anchor date
+        anchor_hint: The first day of a 14-day cycle. Only used for the "Every 2 weeks" cadence.
+        preview_button: Preview change
+        preview_title: Preview
+        preview_current: Current period
+        preview_effective_from: New cadence starts
+        preview_first: First new period
+        preview_next: Following period
+        apply_button: Apply change

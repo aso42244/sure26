@@ -1,0 +1,62 @@
+<%= content_for :page_title, t(".page_title") %>
+
+<%= settings_section title: t(".title"), subtitle: t(".subtitle") do %>
+  <div class="space-y-4">
+    <div class="rounded-lg border border-primary p-4">
+      <p class="text-sm text-secondary"><%= t(".current_label") %></p>
+      <p class="text-primary font-medium">
+        <% if @current_cadence.biweekly? %>
+          <%= t(".biweekly_current", anchor: I18n.l(@current_cadence.anchor_date, format: :long)) %>
+        <% else %>
+          <%= t(".monthly_current") %>
+        <% end %>
+      </p>
+    </div>
+
+    <%= render DS::Alert.new(message: t(".effective_dated_warning"), variant: :warning) %>
+
+    <%= styled_form_with url: settings_budget_cadence_path, scope: :budget_schedule, method: :get, class: "space-y-4" do |form| %>
+      <%= form.select :cadence,
+          [ [ t(".cadence_monthly"), Budget::Cadence::MONTHLY ], [ t(".cadence_biweekly"), Budget::Cadence::BIWEEKLY ] ],
+          { label: t(".cadence_label"), selected: params.dig(:budget_schedule, :cadence) } %>
+
+      <%= form.date_field :anchor_date,
+          label: t(".anchor_label"),
+          value: params.dig(:budget_schedule, :anchor_date),
+          hint: t(".anchor_hint") %>
+
+      <%= form.submit t(".preview_button") %>
+    <% end %>
+
+    <% if @preview %>
+      <div class="rounded-lg border border-primary p-4 space-y-3">
+        <h3 class="text-primary font-medium"><%= t(".preview_title") %></h3>
+        <dl class="text-sm space-y-2">
+          <div class="flex justify-between gap-4">
+            <dt class="text-secondary"><%= t(".preview_current") %></dt>
+            <dd class="text-primary"><%= format_period_range(@preview[:current_period]) %></dd>
+          </div>
+          <div class="flex justify-between gap-4">
+            <dt class="text-secondary"><%= t(".preview_effective_from") %></dt>
+            <dd class="text-primary"><%= I18n.l(@preview[:effective_from], format: :long) %></dd>
+          </div>
+          <div class="flex justify-between gap-4">
+            <dt class="text-secondary"><%= t(".preview_first") %></dt>
+            <dd class="text-primary"><%= format_period_range(@preview[:first_period]) %></dd>
+          </div>
+          <div class="flex justify-between gap-4">
+            <dt class="text-secondary"><%= t(".preview_next") %></dt>
+            <dd class="text-primary"><%= format_period_range(@preview[:next_period]) %></dd>
+          </div>
+        </dl>
+
+        <%= styled_form_with url: settings_budget_cadence_path, scope: :budget_schedule, method: :post do |form| %>
+          <%= form.hidden_field :cadence, value: @preview[:cadence].type %>
+          <%= form.hidden_field :anchor_date, value: @preview[:cadence].anchor_date&.iso8601 %>
+          <%= form.hidden_field :effective_from, value: @preview[:effective_from].iso8601 %>
+          <%= form.submit t(".apply_button") %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

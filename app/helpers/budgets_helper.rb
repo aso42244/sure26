@@ -1,4 +1,11 @@
 module BudgetsHelper
+  # Formats a [start_date, end_date] pair as a localized range, e.g.
+  # "Jan 6 - Jan 19, 2025".
+  def format_period_range(period)
+    start_date, end_date = period
+    "#{I18n.l(start_date, format: :short)} - #{I18n.l(end_date, format: :long)}"
+  end
+
   def budget_has_over_budget?(budget)
     return false unless budget.initialized?
 
