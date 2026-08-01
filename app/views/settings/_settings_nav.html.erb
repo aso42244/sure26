@@ -6,6 +6,7 @@ nav_sections = [
       { label: t(".accounts_label"), path: accounts_path, icon: "layers" },
       { label: t(".bank_sync_label"), path: settings_providers_path, icon: "banknote", if: Current.user&.admin? },
       { label: t(".preferences_label"), path: settings_preferences_path, icon: "bolt" },
+      { label: t(".budget_cadence_label"), path: settings_budget_cadence_path, icon: "calendar-clock", if: Current.user&.admin? },
       { label: t(".appearance_label"), path: settings_appearance_path, icon: "palette" },
       { label: t(".profile_label"), path: settings_profile_path, icon: "circle-user" },
       { label: t(".security_label"), path: settings_security_path, icon: "shield-check" },

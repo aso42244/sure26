@@ -86,19 +86,28 @@ class Settings::BudgetCadencesController < ApplicationController
       resolved_effective_from_for(schedule.to_cadence(family: @family), schedule.anchor_date)
     end
 
-    # Default a change to the start of the next period, so it only affects the
-    # future and never the period already in progress.
+    # The date the new cadence begins. It is always a real period boundary of
+    # the NEW cadence, on or after today — so the current partial period keeps
+    # its old cadence and no already-elapsed period is ever rewritten.
+    #
+    # Biweekly: the first cycle start (on the chosen anchor grid) that is not in
+    # the past. The anchor can be any date the user likes (e.g. a past payday);
+    # only the effective date is pinned to now-or-later.
+    # Monthly: the start of the next month-period.
     def resolved_effective_from_for(cadence, anchor)
       if cadence.biweekly? && anchor.present?
-        [ anchor, Date.current.tomorrow ].max
+        start_date = anchor
+        start_date = cadence.next_start(start_date) while start_date < Date.current
+        start_date
       else
         current_start, _ = @current_cadence.period_for(Date.current)
         @current_cadence.next_start(current_start)
       end
     end
 
+    # A change may take effect today or later, never in the past (which would
+    # reinterpret an already-closed period).
     def future_effective?(date)
-      _current_start, current_end = @current_cadence.period_for(Date.current)
-      date > current_end
+      date >= Date.current
     end
 end

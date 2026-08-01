@@ -36,9 +36,24 @@ class Settings::BudgetCadencesControllerTest < ActionDispatch::IntegrationTest
     assert_equal anchor, schedule.anchor_date
   end
 
-  test "rejects a change effective within the current period" do
-    _current_start, current_end = @family.current_budget_cadence.period_for(Date.current)
-    past_effective = current_end - 1
+  test "accepts a change anchored within the current period (starts today or later)" do
+    # An anchor inside the current month is fine; the effective date is pinned
+    # to today-or-later, so no elapsed period is rewritten.
+    anchor = Date.current
+
+    assert_difference "@family.budget_schedules.count", 1 do
+      post settings_budget_cadence_url, params: {
+        budget_schedule: { cadence: "biweekly", anchor_date: anchor.iso8601 }
+      }
+    end
+    assert_response :redirect
+
+    schedule = @family.budget_schedules.order(:created_at).last
+    assert schedule.effective_from >= Date.current
+  end
+
+  test "rejects a change with a past effective date" do
+    past_effective = Date.current - 30
 
     assert_no_difference "BudgetSchedule.count" do
       post settings_budget_cadence_url, params: {
