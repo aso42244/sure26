@@ -50,6 +50,7 @@ class Family < ApplicationRecord
 
   has_many :budgets, dependent: :destroy
   has_many :budget_categories, through: :budgets
+  has_many :budget_schedules, dependent: :destroy
 
   has_many :goals, dependent: :destroy
 
@@ -229,6 +230,27 @@ class Family < ApplicationRecord
 
   def uses_custom_month_start?
     month_start_day != 1
+  end
+
+  # The cadence value object that governs a budget period containing `date`.
+  # Falls back to monthly (honoring any custom month-start day) when the family
+  # has no biweekly schedule effective on that date, so existing families and
+  # historical periods are unaffected.
+  def budget_cadence_for(date)
+    schedule = budget_schedules.effective_on_or_before(date).first
+    return schedule.to_cadence(family: self) if schedule
+
+    Budget::Cadence.new(Budget::Cadence::MONTHLY, family: self)
+  end
+
+  # The cadence config currently governing new budgets (used by the settings UI
+  # and previews). Monthly when no schedule is in effect today.
+  def current_budget_cadence
+    budget_cadence_for(Date.current)
+  end
+
+  def uses_biweekly_budgets?
+    budget_schedules.exists?
   end
 
   def custom_month_start_for(date)

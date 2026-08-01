@@ -33,6 +33,7 @@ en:
       autosuggest_description: "This will be based on transaction history. AI can make mistakes, verify before continuing."
       continue: "Continue"
     name:
+      biweekly_range: "%{start} - %{end_date}"
       custom_range: "%{start} - %{end_date}"
       month_year: "%{month}"
     show:

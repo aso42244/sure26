@@ -11,22 +11,48 @@ class Budget < ApplicationRecord
 
   validates :start_date, :end_date, presence: true
   validates :start_date, :end_date, uniqueness: { scope: :family_id }
+  validates :cadence, presence: true, inclusion: { in: Budget::Cadence::TYPES }
+  validates :anchor_date, presence: true, if: :biweekly?
+  validate :anchor_date_absent_unless_biweekly
 
   monetize :budgeted_spending, :expected_income, :allocated_spending,
            :actual_spending, :available_to_spend, :available_to_allocate,
            :estimated_spending, :estimated_income, :actual_income, :remaining_expected_income
+
+  # Biweekly budgets are identified in URLs by their ISO cycle-start date
+  # (e.g. "2025-01-06"), which is unambiguous even when several cycles fall in
+  # one calendar month. Monthly budgets keep the "%b-%Y" param for full
+  # backward compatibility of existing links.
+  BIWEEKLY_PARAM_REGEX = /\A\d{4}-\d{2}-\d{2}\z/
 
   class << self
     def date_to_param(date)
       date.strftime(PARAM_DATE_FORMAT).downcase
     end
 
-    def param_to_date(param, family: nil)
-      base_date = Date.strptime(param, PARAM_DATE_FORMAT)
-      if family&.uses_custom_month_start?
-        Date.new(base_date.year, base_date.month, family.month_start_day)
+    # A param for `date` that respects whichever cadence governs that date for
+    # the family (used by budget navigation, which may cross a cadence change).
+    def date_param_for(date, family:)
+      cadence = family.budget_cadence_for(date)
+      if cadence.biweekly?
+        cadence.period_for(date).first.iso8601
       else
-        base_date.beginning_of_month
+        date_to_param(date)
+      end
+    end
+
+    def param_to_date(param, family: nil)
+      if param.to_s.match?(BIWEEKLY_PARAM_REGEX)
+        # A date inside the intended biweekly cycle; period_for normalizes it
+        # to the cycle start.
+        Date.iso8601(param)
+      else
+        base_date = Date.strptime(param, PARAM_DATE_FORMAT)
+        if family&.uses_custom_month_start?
+          Date.new(base_date.year, base_date.month, family.month_start_day)
+        else
+          base_date.beginning_of_month
+        end
       end
     end
 
@@ -36,19 +62,19 @@ class Budget < ApplicationRecord
         budget_start <= latest_valid_budget_start_date(family)
     end
 
+    # Boundaries for the period containing `date`, using the cadence in effect
+    # for the family on that date. Monthly families (the default) get calendar
+    # or custom-month boundaries exactly as before.
     def period_for(date, family:)
-      if family.uses_custom_month_start?
-        [ family.custom_month_start_for(date), family.custom_month_end_for(date) ]
-      else
-        [ date.beginning_of_month, date.end_of_month ]
-      end
+      family.budget_cadence_for(date).period_for(date)
     end
 
     def find_or_bootstrap(family, start_date:, user: nil)
       return nil unless budget_date_valid?(start_date, family: family)
 
       Budget.transaction do
-        budget_start, budget_end = period_for(start_date, family: family)
+        cadence = family.budget_cadence_for(start_date)
+        budget_start, budget_end = cadence.period_for(start_date)
 
         budget = Budget.find_or_create_by!(
           family: family,
@@ -56,6 +82,11 @@ class Budget < ApplicationRecord
           end_date: budget_end
         ) do |b|
           b.currency = family.currency
+          b.cadence = cadence.type
+          # Store the cycle's own start as the anchor: it sits on the same
+          # 14-day grid as the schedule anchor, so the budget is fully
+          # self-describing without depending on the family schedule later.
+          b.anchor_date = cadence.biweekly? ? budget_start : nil
         end
 
         budget.current_user = user
@@ -85,8 +116,23 @@ class Budget < ApplicationRecord
     Period.custom(start_date: start_date, end_date: end_date)
   end
 
+  # The boundary-math value object described by this budget's own stored
+  # cadence + anchor — independent of the family schedule, so navigating an old
+  # budget always steps by the cadence it was created with.
+  def budget_cadence
+    Budget::Cadence.new(cadence, anchor_date: anchor_date, family: family)
+  end
+
+  def biweekly?
+    cadence == Budget::Cadence::BIWEEKLY
+  end
+
+  def monthly?
+    cadence == Budget::Cadence::MONTHLY
+  end
+
   def to_param
-    self.class.date_to_param(start_date)
+    biweekly? ? start_date.iso8601 : self.class.date_to_param(start_date)
   end
 
   def sync_budget_categories
@@ -126,7 +172,13 @@ class Budget < ApplicationRecord
   end
 
   def name
-    if family.uses_custom_month_start?
+    if biweekly?
+      I18n.t(
+        "budgets.name.biweekly_range",
+        start: I18n.l(start_date, format: :short),
+        end_date: I18n.l(end_date, format: :long)
+      )
+    elsif family.uses_custom_month_start?
       I18n.t(
         "budgets.name.custom_range",
         start: I18n.l(start_date, format: :short),
@@ -180,12 +232,7 @@ class Budget < ApplicationRecord
   end
 
   def current?
-    if family.uses_custom_month_start?
-      current_period = family.current_custom_month_period
-      start_date == current_period.start_date && end_date == current_period.end_date
-    else
-      start_date == Date.current.beginning_of_month && end_date == Date.current.end_of_month
-    end
+    (start_date..end_date).cover?(Date.current)
   end
 
   # Whole days from today through the period's last day (today counts).
@@ -208,17 +255,17 @@ class Budget < ApplicationRecord
   end
 
   def previous_budget_param
-    previous_date = start_date - 1.month
+    previous_date = budget_cadence.previous_start(start_date)
     return nil unless self.class.budget_date_valid?(previous_date, family: family)
 
-    self.class.date_to_param(previous_date)
+    self.class.date_param_for(previous_date, family: family)
   end
 
   def next_budget_param
-    next_date = start_date + 1.month
+    next_date = budget_cadence.next_start(start_date)
     return nil unless self.class.budget_date_valid?(next_date, family: family)
 
-    self.class.date_to_param(next_date)
+    self.class.date_param_for(next_date, family: family)
   end
 
   def to_donut_segments_json
@@ -340,6 +387,12 @@ class Budget < ApplicationRecord
   end
 
   private
+    def anchor_date_absent_unless_biweekly
+      if !biweekly? && anchor_date.present?
+        errors.add(:anchor_date, :must_be_blank_for_monthly)
+      end
+    end
+
     def income_statement
       @income_statement ||= family.income_statement(user: current_user)
     end
