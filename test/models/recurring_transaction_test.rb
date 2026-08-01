@@ -1106,4 +1106,49 @@ class RecurringTransactionTest < ActiveSupport::TestCase
       @family.recurring_transactions.create!(base_attrs)
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Biweekly (14-day) cadence
+  # ---------------------------------------------------------------------------
+  test "defaults to monthly cadence" do
+    recurring = @family.recurring_transactions.create!(
+      account: @account, merchant: @merchant, amount: 15.99, currency: "USD",
+      expected_day_of_month: 5, last_occurrence_date: Date.current,
+      next_expected_date: 1.month.from_now.to_date, occurrence_count: 1
+    )
+    assert recurring.monthly?
+    refute recurring.biweekly?
+  end
+
+  test "biweekly cadence requires an anchor date" do
+    recurring = @family.recurring_transactions.build(
+      account: @account, merchant: @merchant, amount: 1500, currency: "USD",
+      cadence: "biweekly", expected_day_of_month: 6,
+      last_occurrence_date: Date.current, next_expected_date: 14.days.from_now.to_date,
+      occurrence_count: 1
+    )
+    refute recurring.valid?
+    assert recurring.errors[:anchor_date].present?
+  end
+
+  test "biweekly next expected date advances by exactly 14 days" do
+    anchor = Date.new(2025, 1, 6)
+    recurring = @family.recurring_transactions.create!(
+      account: @account, name: "Paycheck", amount: -2000, currency: "USD",
+      cadence: "biweekly", anchor_date: anchor, expected_day_of_month: anchor.day,
+      last_occurrence_date: anchor, next_expected_date: anchor + 14, occurrence_count: 1
+    )
+
+    assert_equal anchor + 14, recurring.calculate_next_expected_date(anchor)
+    assert_equal Date.new(2025, 2, 3), recurring.calculate_next_expected_date(Date.new(2025, 1, 20))
+  end
+
+  test "monthly next expected date is unchanged" do
+    recurring = @family.recurring_transactions.create!(
+      account: @account, merchant: @merchant, amount: 15.99, currency: "USD",
+      expected_day_of_month: 5, last_occurrence_date: Date.new(2025, 1, 5),
+      next_expected_date: Date.new(2025, 2, 5), occurrence_count: 1
+    )
+    assert_equal Date.new(2025, 2, 5), recurring.calculate_next_expected_date(Date.new(2025, 1, 5))
+  end
 end

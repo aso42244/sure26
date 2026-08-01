@@ -11,6 +11,8 @@ json.start_date budget.start_date
 json.end_date budget.end_date
 json.name budget.name
 json.currency budget.currency
+json.cadence budget.cadence
+json.anchor_date budget.anchor_date
 json.initialized budget.initialized?
 json.current budget.current?
 

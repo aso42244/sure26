@@ -7,6 +7,9 @@ class BudgetsController < ApplicationController
 
   def show
     @source_budget = @budget.most_recent_initialized_budget unless @budget.initialized?
+    # Refresh the sinking-fund ledger so accumulated balances are current when
+    # the period is viewed. No-op unless the budget has sinking-fund categories.
+    @budget.sync_category_funds!
     @breadcrumbs = plan_breadcrumb_prefix + [ [ t("breadcrumbs.budgets"), nil ] ]
   end
 

@@ -33,6 +33,10 @@ class BudgetCategoriesController < ApplicationController
     @budget_category = Current.family.budget_categories.find(params[:id])
     @budget_category.update_budgeted_spending!(budgeted_spending_param)
 
+    if params.require(:budget_category).key?(:contribution_amount)
+      @budget_category.update_contribution!(contribution_param)
+    end
+
     respond_to do |format|
       format.turbo_stream
       format.html { redirect_to budget_budget_categories_path(@budget) }
@@ -47,6 +51,13 @@ class BudgetCategoriesController < ApplicationController
         .permit(:budgeted_spending)
         .fetch(:budgeted_spending, nil)
         .presence || 0
+    end
+
+    def contribution_param
+      params.require(:budget_category)
+        .permit(:contribution_amount)
+        .fetch(:contribution_amount, nil)
+        .presence
     end
 
     def set_budget

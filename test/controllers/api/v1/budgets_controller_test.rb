@@ -75,11 +75,26 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @budget.start_date.to_s, response_data["start_date"]
     assert_equal "USD", response_data["currency"]
     assert_equal true, response_data["initialized"]
+    assert_equal "monthly", response_data["cadence"]
+    assert_nil response_data["anchor_date"]
     assert_kind_of Integer, response_data["budgeted_spending_cents"]
     assert_kind_of Integer, response_data["actual_spending_cents"]
     assert_kind_of Integer, response_data["actual_income_cents"]
     assert_kind_of Integer, response_data["available_to_spend_cents"]
     assert_kind_of Integer, response_data["available_to_allocate_cents"]
+  end
+
+  test "exposes cadence and anchor for a biweekly budget" do
+    anchor = 2.months.ago.to_date.beginning_of_week
+    @family.budget_schedules.create!(cadence: "biweekly", anchor_date: anchor, effective_from: anchor)
+    biweekly = Budget.find_or_bootstrap(@family, start_date: anchor + 2)
+
+    get api_v1_budget_url(biweekly.id), headers: api_headers(@api_key)
+
+    assert_response :success
+    response_data = JSON.parse(response.body)
+    assert_equal "biweekly", response_data["cadence"]
+    assert_equal biweekly.anchor_date.to_s, response_data["anchor_date"]
   end
 
   test "returns not found for another family's budget" do

@@ -1,0 +1,14 @@
+---
+en:
+  activerecord:
+    attributes:
+      budget_schedule:
+        cadence: Cadence
+        anchor_date: Anchor date
+        effective_from: Effective from
+    errors:
+      models:
+        budget_schedule:
+          attributes:
+            anchor_date:
+              must_be_blank_for_monthly: is only used by biweekly schedules.

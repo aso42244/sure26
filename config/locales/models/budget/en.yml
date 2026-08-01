@@ -1,0 +1,15 @@
+---
+en:
+  activerecord:
+    attributes:
+      budget:
+        cadence: Cadence
+        anchor_date: Anchor date
+        budgeted_spending: Budgeted spending
+        expected_income: Expected income
+    errors:
+      models:
+        budget:
+          attributes:
+            anchor_date:
+              must_be_blank_for_monthly: is only used by biweekly budgets.

@@ -33,6 +33,7 @@ en:
       autosuggest_description: "This will be based on transaction history. AI can make mistakes, verify before continuing."
       continue: "Continue"
     name:
+      biweekly_range: "%{start} - %{end_date}"
       custom_range: "%{start} - %{end_date}"
       month_year: "%{month}"
     show:
@@ -70,6 +71,9 @@ en:
       over_set: "> 100% set"
       percent_set: "%{percent} set"
     budget_category_form:
+      contribution_placeholder: Contribution
+      contribution_title: Amount to set aside each cycle. Surplus carries over.
+      fund_balance: "Fund: %{amount}"
       monthly_average: "%{amount}/m avg"
       shared_placeholder: Shared
       shared_title: Leave empty to share parent's budget

@@ -4,6 +4,7 @@ module SettingsHelper
     { name: -> { t("settings.settings_nav.accounts_label") }, path: :accounts_path },
     { name: -> { t("settings.settings_nav.bank_sync_label") }, path: :settings_providers_path, condition: :admin_user? },
     { name: -> { t("settings.settings_nav.preferences_label") }, path: :settings_preferences_path },
+    { name: -> { t("settings.settings_nav.budget_cadence_label") }, path: :settings_budget_cadence_path, condition: :admin_user? },
     { name: -> { t("settings.settings_nav.appearance_label") }, path: :settings_appearance_path },
     { name: -> { t("settings.settings_nav.profile_label") }, path: :settings_profile_path },
     { name: -> { t("settings.settings_nav.security_label") }, path: :settings_security_path },

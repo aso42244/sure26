@@ -15,11 +15,17 @@ json.budgeted_spending budget_category.budgeted_spending_money.format
 json.budgeted_spending_cents money_to_minor_units.call(budget_category.budgeted_spending_money)
 json.display_budgeted_spending Money.new(budget_category.display_budgeted_spending, budget_category.currency).format
 json.display_budgeted_spending_cents money_to_minor_units.call(Money.new(budget_category.display_budgeted_spending, budget_category.currency))
+json.contribution_amount budget_category.contribution_amount_money&.format
+json.contribution_amount_cents money_to_minor_units.call(budget_category.contribution_amount_money)
+json.sinking_fund budget_category.sinking_fund?
+
 if include_derived_amounts
   json.actual_spending budget_category.actual_spending_money.format
   json.actual_spending_cents money_to_minor_units.call(budget_category.actual_spending_money)
   json.available_to_spend budget_category.available_to_spend_money.format
   json.available_to_spend_cents money_to_minor_units.call(budget_category.available_to_spend_money)
+  json.fund_balance budget_category.fund_balance_money&.format
+  json.fund_balance_cents money_to_minor_units.call(budget_category.fund_balance_money)
 end
 
 json.category do
