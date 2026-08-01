@@ -35,4 +35,18 @@ class BudgetsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", plan_path, count: 0
     assert_select "a[href=?]", budgets_path, minimum: 1
   end
+
+  test "renders a biweekly budget page and picker" do
+    anchor = Date.current.beginning_of_week
+    @user.family.budget_schedules.create!(cadence: "biweekly", anchor_date: anchor, effective_from: anchor)
+
+    budget = Budget.find_or_bootstrap(@user.family, start_date: Date.current)
+    assert budget.biweekly?
+
+    get budget_url(budget.to_param)
+    assert_response :success
+
+    get picker_budgets_url(year: budget.start_date.year), headers: { "Turbo-Frame" => "budget_picker" }
+    assert_response :success
+  end
 end

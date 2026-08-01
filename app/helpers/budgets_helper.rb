@@ -6,6 +6,20 @@ module BudgetsHelper
     "#{I18n.l(start_date, format: :short)} - #{I18n.l(end_date, format: :long)}"
   end
 
+  # All biweekly cycle [start, end] pairs whose start falls within `year`, for
+  # the given cadence. Used by the budget picker in biweekly mode.
+  def biweekly_cycles_in_year(cadence, year)
+    cycle_start, = cadence.period_for(Date.new(year, 1, 1))
+    cycle_start = cadence.next_start(cycle_start) while cycle_start.year < year
+
+    cycles = []
+    while cycle_start.year == year
+      cycles << [ cycle_start, cadence.end_for(cycle_start) ]
+      cycle_start = cadence.next_start(cycle_start)
+    end
+    cycles
+  end
+
   def budget_has_over_budget?(budget)
     return false unless budget.initialized?
 

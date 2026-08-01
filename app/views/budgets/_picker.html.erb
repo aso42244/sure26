@@ -32,23 +32,42 @@
       <% end %>
     </div>
 
-    <div class="grid grid-cols-3 gap-2 text-sm text-center font-medium">
-      <% Date::ABBR_MONTHNAMES.compact.each do |month_name| %>
-        <% date = Date.strptime("#{month_name}-#{year}", "%b-%Y") %>
-        <% param_key = Budget.date_to_param(date) %>
-
-        <% if Budget.budget_date_valid?(date, family: family) %>
-          <%= render DS::Link.new(
-            variant: "ghost",
-            text: month_name,
-            href: budget_path(param_key),
-            full_width: true,
-            frame: :_top
-          ) %>
-        <% else %>
-          <span class="px-3 py-2 text-subdued rounded-md"><%= month_name %></span>
+    <% cadence = family.current_budget_cadence %>
+    <% if cadence.biweekly? %>
+      <div class="flex flex-col gap-1 text-sm font-medium max-h-72 overflow-y-auto">
+        <% biweekly_cycles_in_year(cadence, year).each do |cycle_start, cycle_end| %>
+          <% if Budget.budget_date_valid?(cycle_start, family: family) %>
+            <%= render DS::Link.new(
+              variant: "ghost",
+              text: format_period_range([ cycle_start, cycle_end ]),
+              href: budget_path(cycle_start.iso8601),
+              full_width: true,
+              frame: :_top
+            ) %>
+          <% else %>
+            <span class="px-3 py-2 text-subdued rounded-md"><%= format_period_range([ cycle_start, cycle_end ]) %></span>
+          <% end %>
         <% end %>
-      <% end %>
-    </div>
+      </div>
+    <% else %>
+      <div class="grid grid-cols-3 gap-2 text-sm text-center font-medium">
+        <% Date::ABBR_MONTHNAMES.compact.each do |month_name| %>
+          <% date = Date.strptime("#{month_name}-#{year}", "%b-%Y") %>
+          <% param_key = Budget.date_to_param(date) %>
+
+          <% if Budget.budget_date_valid?(date, family: family) %>
+            <%= render DS::Link.new(
+              variant: "ghost",
+              text: month_name,
+              href: budget_path(param_key),
+              full_width: true,
+              frame: :_top
+            ) %>
+          <% else %>
+            <span class="px-3 py-2 text-subdued rounded-md"><%= month_name %></span>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
   </div>
 <% end %>

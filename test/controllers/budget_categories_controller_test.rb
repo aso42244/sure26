@@ -64,6 +64,30 @@ class BudgetCategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#{uncategorized_form_selector} p.text-secondary.privacy-sensitive", text: /\/m avg/
   end
 
+  test "setting a contribution creates a sinking-fund ledger row" do
+    assert_difference "BudgetCategoryFund.count", 1 do
+      patch budget_budget_category_path(@budget, @parent_budget_category),
+            params: { budget_category: { budgeted_spending: 500, contribution_amount: 150 } },
+            as: :turbo_stream
+    end
+
+    assert_response :success
+    assert @parent_budget_category.reload.sinking_fund?
+    fund = BudgetCategoryFund.find_by!(budget_id: @budget.id, category_id: @parent_category.id)
+    assert_equal 150, fund.contribution
+  end
+
+  test "clearing a contribution stops the category being a sinking fund" do
+    @parent_budget_category.update_contribution!(150)
+
+    patch budget_budget_category_path(@budget, @parent_budget_category),
+          params: { budget_category: { budgeted_spending: 500, contribution_amount: "" } },
+          as: :turbo_stream
+
+    assert_response :success
+    refute @parent_budget_category.reload.sinking_fund?
+  end
+
   test "updating a subcategory adjusts the parent budget by the same delta" do
     assert_changes -> { @parent_budget_category.reload.budgeted_spending.to_f }, from: 500.0, to: 550.0 do
       patch budget_budget_category_path(@budget, @electric_budget_category),
