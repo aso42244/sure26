@@ -75,6 +75,21 @@ class Api::V1::BudgetCategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_kind_of Integer, response_data["budgeted_spending_cents"]
     assert_kind_of Integer, response_data["actual_spending_cents"]
     assert_kind_of Integer, response_data["available_to_spend_cents"]
+    assert response_data.key?("sinking_fund")
+    assert_equal false, response_data["sinking_fund"]
+    assert_nil response_data["contribution_amount"]
+  end
+
+  test "shows contribution and fund balance for a sinking-fund category" do
+    @budget_category.update_contribution!(150)
+
+    get api_v1_budget_category_url(@budget_category), headers: api_headers(@api_key)
+
+    assert_response :success
+    response_data = JSON.parse(response.body)
+    assert_equal true, response_data["sinking_fund"]
+    assert_kind_of Integer, response_data["contribution_amount_cents"]
+    assert_kind_of Integer, response_data["fund_balance_cents"]
   end
 
   test "returns not found for another family's budget category" do
