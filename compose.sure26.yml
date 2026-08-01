@@ -1,0 +1,144 @@
+# ===========================================================================
+# Sure26 — self-host Docker Compose (build from source)
+# ===========================================================================
+#
+# This is a Sure26 variant of compose.example.yml. Instead of pulling a
+# prebuilt upstream image, it BUILDS the app image from this repository, so it
+# runs the exact Sure26 source you have checked out (including biweekly
+# budgets). Standard, portable Docker Compose — no Umbrel-specific packaging.
+#
+# Quick start (from the repo root, on your server):
+#   cp .env.sure26.example .env
+#   # edit .env and set SECRET_KEY_BASE and POSTGRES_PASSWORD (see that file)
+#   docker compose -f compose.sure26.yml up -d --build
+#
+# Full beginner walkthrough (backup, upgrade, rollback, restore):
+#   docs/hosting/umbrel-sure26.md
+# ===========================================================================
+
+x-db-env: &db_env
+  POSTGRES_USER: ${POSTGRES_USER:-sure_user}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+  POSTGRES_DB: ${POSTGRES_DB:-sure_production}
+
+x-rails-env: &rails_env
+  <<: *db_env
+  # Required. Generate once with: openssl rand -hex 64
+  SECRET_KEY_BASE: ${SECRET_KEY_BASE:?Set SECRET_KEY_BASE in .env}
+  SELF_HOSTED: "true"
+  RAILS_FORCE_SSL: "false"
+  RAILS_ASSUME_SSL: "false"
+  DB_HOST: db
+  DB_PORT: 5432
+  REDIS_URL: redis://redis:6379/1
+  # AGPL: link users to the corresponding source of the exact deployed version.
+  SURE_SOURCE_REPO: ${SURE_SOURCE_REPO:-aso42244/sure26}
+  BUILD_COMMIT_SHA: ${BUILD_COMMIT_SHA:-}
+  # Optional AI features (leave blank to disable). Costs money if enabled.
+  OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN:-}
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        BUILD_COMMIT_SHA: ${BUILD_COMMIT_SHA:-}
+    image: sure26:local
+    volumes:
+      - app-storage:/rails/storage
+    ports:
+      - ${PORT:-3000}:3000
+    restart: unless-stopped
+    environment:
+      <<: *rails_env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    networks:
+      - sure_net
+
+  worker:
+    image: sure26:local
+    command: bundle exec sidekiq
+    volumes:
+      - app-storage:/rails/storage
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      <<: *rails_env
+    networks:
+      - sure_net
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      <<: *db_env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sure_net
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sure_net
+
+  # Automated daily database backups. Enable with:
+  #   docker compose -f compose.sure26.yml --profile backup up -d
+  backup:
+    profiles:
+      - backup
+    image: prodrigestivill/postgres-backup-local
+    restart: unless-stopped
+    volumes:
+      - ${BACKUP_DIR:-./backups}:/backups
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB:-sure_production}
+      - POSTGRES_USER=${POSTGRES_USER:-sure_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env} # pipelock:ignore
+      - SCHEDULE=@daily
+      - BACKUP_KEEP_DAYS=7
+      - BACKUP_KEEP_WEEKS=4
+      - BACKUP_KEEP_MONTHS=6
+    depends_on:
+      - db
+    networks:
+      - sure_net
+
+volumes:
+  app-storage:
+  postgres-data:
+  redis-data:
+
+networks:
+  sure_net:
+    driver: bridge
