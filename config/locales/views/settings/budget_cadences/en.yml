@@ -3,7 +3,7 @@ en:
   settings:
     budget_cadences:
       admin_only: Only an admin can change the budgeting cadence.
-      not_future: A cadence change can only take effect after the current budget period ends.
+      not_future: A cadence change can't start on a past date. Pick today or a future date.
       success: Budgeting cadence updated. It applies to future periods only.
       show:
         page_title: Budget cadence
