@@ -17,6 +17,8 @@ class RecurringTransaction < ApplicationRecord
   validates :currency, presence: true
   validates :expected_day_of_month, presence: true, numericality: { greater_than: 0, less_than_or_equal_to: 31 }
   validates :status, presence: true, inclusion: { in: statuses.keys }
+  validates :cadence, presence: true, inclusion: { in: Budget::Cadence::TYPES }
+  validates :anchor_date, presence: true, if: :biweekly?
   validates :occurrence_count, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validate :merchant_or_name_present
   validate :amount_variance_consistency
@@ -64,6 +66,14 @@ class RecurringTransaction < ApplicationRecord
 
   def transfer?
     destination_account_id.present?
+  end
+
+  def biweekly?
+    cadence == Budget::Cadence::BIWEEKLY
+  end
+
+  def monthly?
+    cadence != Budget::Cadence::BIWEEKLY
   end
 
   scope :for_family, ->(family) { where(family: family) }
@@ -344,6 +354,10 @@ class RecurringTransaction < ApplicationRecord
 
   # Calculate the next expected date based on the last occurrence
   def calculate_next_expected_date(from_date = last_occurrence_date)
+    # Biweekly rows advance by an exact 14-day step, independent of month
+    # length — the same calendar-date math budgets use.
+    return from_date.to_date + Budget::Cadence::CYCLE_DAYS if biweekly?
+
     # Start with next month
     next_month = from_date.next_month
 
@@ -422,7 +436,11 @@ class RecurringTransaction < ApplicationRecord
     end
 
     # Entries whose day-of-month lands within ±2 days of the expected day.
+    # Day-of-month is meaningless for a 14-day cadence, so biweekly rows match
+    # on amount + name/merchant alone (no calendar-day window).
     def day_of_month_scope(relation)
+      return relation if biweekly?
+
       relation.where("EXTRACT(DAY FROM entries.date) BETWEEN ? AND ?",
                      [ expected_day_of_month - 2, 1 ].max,
                      [ expected_day_of_month + 2, 31 ].min)

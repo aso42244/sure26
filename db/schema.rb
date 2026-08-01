@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_01_000004) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_01_000005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -1660,6 +1660,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_01_000004) do
     t.decimal "expected_amount_avg", precision: 19, scale: 4
     t.uuid "account_id"
     t.uuid "destination_account_id"
+    t.string "cadence", default: "monthly", null: false
+    t.date "anchor_date"
     t.index ["account_id"], name: "index_recurring_transactions_on_account_id"
     t.index ["destination_account_id"], name: "index_recurring_transactions_on_destination_account_id"
     t.index ["family_id", "account_id", "destination_account_id", "merchant_id", "amount", "currency"], name: "idx_recurring_txns_pair_merchant", unique: true, where: "((destination_account_id IS NOT NULL) AND (merchant_id IS NOT NULL))"
@@ -1670,6 +1672,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_01_000004) do
     t.index ["family_id"], name: "index_recurring_transactions_on_family_id"
     t.index ["merchant_id"], name: "index_recurring_transactions_on_merchant_id"
     t.index ["next_expected_date"], name: "index_recurring_transactions_on_next_expected_date"
+    t.check_constraint "cadence::text = ANY (ARRAY['monthly'::character varying, 'biweekly'::character varying]::text[])", name: "recurring_transactions_cadence_valid"
+    t.check_constraint "cadence::text <> 'biweekly'::text OR anchor_date IS NOT NULL", name: "recurring_transactions_biweekly_requires_anchor"
     t.check_constraint "destination_account_id IS NULL OR account_id IS NOT NULL", name: "chk_recurring_txns_transfer_requires_source"
     t.check_constraint "destination_account_id IS NULL OR destination_account_id <> account_id", name: "chk_recurring_txns_transfer_distinct_accounts"
   end
