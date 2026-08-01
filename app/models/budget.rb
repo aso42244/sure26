@@ -8,6 +8,7 @@ class Budget < ApplicationRecord
   belongs_to :family
 
   has_many :budget_categories, -> { includes(:category) }, dependent: :destroy
+  has_many :budget_category_funds, dependent: :destroy
 
   validates :start_date, :end_date, presence: true
   validates :start_date, :end_date, uniqueness: { scope: :family_id }
@@ -154,6 +155,17 @@ class Budget < ApplicationRecord
 
     # Remove old categories
     budget_categories.where(category_id: categories_to_remove).destroy_all if categories_to_remove.any?
+  end
+
+  # Refresh the sinking-fund ledger for this period: finalize the prior closed
+  # period and (re)seed this period's opening balance + contribution. Safe to
+  # call repeatedly; a no-op when no category is a sinking fund.
+  def sync_category_funds!
+    Budget::FundRoller.sync!(self)
+  end
+
+  def any_sinking_funds?
+    budget_categories.any?(&:sinking_fund?) || budget_category_funds.exists?
   end
 
   def uncategorized_budget_category

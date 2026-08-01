@@ -7,6 +7,7 @@ class BudgetCategory < ApplicationRecord
   validates :budget_id, uniqueness: { scope: :category_id }
 
   monetize :budgeted_spending, :available_to_spend, :avg_monthly_expense, :median_monthly_expense, :actual_spending
+  monetize :contribution_amount, allow_nil: true
 
   class Group
     attr_reader :budget_category, :budget_subcategories
@@ -61,6 +62,37 @@ class BudgetCategory < ApplicationRecord
       update!(budgeted_spending: new_budgeted_spending)
 
       sync_parent_budgeted_spending!(previous_budgeted_spending:) if subcategory?
+    end
+  end
+
+  # A category becomes a sinking fund once it has a positive per-cycle
+  # contribution. Its surplus then accumulates across periods via the
+  # BudgetCategoryFund ledger.
+  def sinking_fund?
+    contribution_amount.present? && contribution_amount.to_d.positive?
+  end
+
+  # This category's fund row for this budget period, if any.
+  def fund
+    return nil if category_id.blank?
+
+    @fund ||= BudgetCategoryFund.find_by(budget_id: budget_id, category_id: category_id)
+  end
+
+  # Accumulated fund balance carried into the next period (opening +
+  # contribution - actual spend). Nil for non-fund categories.
+  def fund_balance_money
+    return nil unless sinking_fund? || fund
+
+    Money.new(fund&.balance || 0, budget.family.currency)
+  end
+
+  def update_contribution!(new_contribution_amount)
+    self.class.transaction do
+      normalized = new_contribution_amount.presence
+      update!(contribution_amount: normalized)
+      @fund = nil
+      Budget::FundRoller.sync!(budget)
     end
   end
 
