@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_01_000005) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_02_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -367,26 +367,25 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_01_000005) do
     t.string "currency", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.decimal "contribution_amount", precision: 19, scale: 4
+    t.boolean "rollover_enabled", default: false, null: false
     t.index ["budget_id", "category_id"], name: "index_budget_categories_on_budget_id_and_category_id", unique: true
     t.index ["budget_id"], name: "index_budget_categories_on_budget_id"
     t.index ["category_id"], name: "index_budget_categories_on_category_id"
   end
 
-  create_table "budget_category_funds", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+  create_table "budget_category_rollovers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "budget_id", null: false
     t.uuid "category_id", null: false
     t.decimal "opening_balance", precision: 19, scale: 4, default: "0.0", null: false
-    t.decimal "contribution", precision: 19, scale: 4, default: "0.0", null: false
     t.decimal "actual_spend", precision: 19, scale: 4
     t.decimal "closing_balance", precision: 19, scale: 4
     t.string "currency", null: false
     t.datetime "finalized_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["budget_id", "category_id"], name: "index_budget_category_funds_on_budget_id_and_category_id", unique: true
-    t.index ["budget_id"], name: "index_budget_category_funds_on_budget_id"
-    t.index ["category_id"], name: "index_budget_category_funds_on_category_id"
+    t.index ["budget_id", "category_id"], name: "index_budget_category_rollovers_on_budget_id_and_category_id", unique: true
+    t.index ["budget_id"], name: "index_budget_category_rollovers_on_budget_id"
+    t.index ["category_id"], name: "index_budget_category_rollovers_on_category_id"
   end
 
   create_table "budget_schedules", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -2377,8 +2376,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_01_000005) do
   add_foreign_key "brex_items", "families"
   add_foreign_key "budget_categories", "budgets"
   add_foreign_key "budget_categories", "categories"
-  add_foreign_key "budget_category_funds", "budgets"
-  add_foreign_key "budget_category_funds", "categories"
+  add_foreign_key "budget_category_rollovers", "budgets"
+  add_foreign_key "budget_category_rollovers", "categories"
   add_foreign_key "budget_schedules", "families"
   add_foreign_key "budgets", "families"
   add_foreign_key "categories", "families"

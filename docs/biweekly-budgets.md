@@ -29,28 +29,33 @@ at a time from the anchor, so it correctly handles leap years, year boundaries,
 daylight-saving changes, and calendar years that contain **27** cycle starts
 (not always 26).
 
-### Sinking-fund contributions (funding independent of payment)
-Any budget category in a biweekly budget can be given a **per-cycle
-contribution** — an amount you set aside each cycle. The contribution
-**accumulates** across cycles and the surplus is **retained** until you spend it
-or manually reallocate it. Funding and payment are independent:
+### Budget rollover (positive or negative, funding independent of payment)
+Any top-level budget category — in a monthly **or** biweekly budget — can have
+**Roll over** turned on. When it's on, whatever's left in that category at the
+end of a period (or however far over you went) carries into the next period,
+added to whatever you budget there next. Nothing is auto-adjusted, and the
+carry can go negative:
 
-> Example — an expense you pay **$300 on the 1st of every month**, funded by a
-> **$150 contribution every 14-day cycle**:
+> Example — an expense you pay **$300 on the 1st of every month**, funded by
+> budgeting **$150 every 14-day cycle** with rollover on:
 >
-> | Cycle | Opening | Contribution | Actual payment | Closing (retained) |
-> |------:|--------:|-------------:|---------------:|-------------------:|
-> | 1     | $0      | $150         | $0             | $150               |
-> | 2     | $150    | $150         | $300           | $0                 |
-> | 3     | $0      | $150         | $0             | **$150**           |
+> | Cycle | Opening | Budgeted | Actual payment | Closing (retained) |
+> |------:|--------:|---------:|----------------:|-------------------:|
+> | 1     | $0      | $150     | $0              | $150               |
+> | 2     | $150    | $150     | $300            | $0                 |
+> | 3     | $0      | $150     | $0              | **$150**           |
 >
-> A month with a third paycheck simply contributes a third $150; that surplus
-> **stays** in the category. Later contributions are **never** auto-reduced
-> because the fund is ahead of schedule.
+> A month with a third paycheck simply budgets a third $150; that surplus
+> **stays** in the category. Later cycles are **never** auto-reduced because
+> the category is ahead of schedule.
+>
+> If you instead overspend a category — say $75 budgeted, $175 spent — it
+> carries a **-$100** balance into the next period, added to whatever's
+> newly budgeted there (e.g. $75 + -$100 = -$25 to start that period).
 
-The same idea applies to quarterly, semiannual, or annual bills: you contribute
-a chosen amount each 14-day cycle, and the fund grows until the real bill posts
-whenever it posts.
+The same idea applies to quarterly, semiannual, or annual bills: budget a small
+amount each cycle and let it accumulate until the real bill posts, whenever
+that is.
 
 ### Biweekly recurring income
 A manually created recurring transaction (for example a paycheck) can be set to
@@ -74,9 +79,10 @@ Because changes are future-only, the switch never alters budgets you've already
 been using. To go back, repeat the steps and choose **Monthly**; that also only
 affects future periods.
 
-### Setting a contribution
-Open a biweekly budget, go to **Categories**, and enter a **Contribution**
-amount next to a category. The accumulated **Fund** balance is shown beneath it.
+### Turning on rollover for a category
+Open a budget, go to **Categories**, and check **Roll over** next to a
+top-level category. The running **Balance** is shown beneath the amount once
+it's on.
 
 ---
 
@@ -199,6 +205,7 @@ unaffected because they never depended on them.
   migration failed, restore your backup (section 6A) and open an issue.
 - **I switched to biweekly but an old month still shows monthly.** That's
   correct — cadence changes are future-only and never rewrite past periods.
-- **A contribution didn't carry into the next cycle.** Contributions accrue per
-  budget period you set up. Use **Copy previous** when starting the next cycle
-  so the contribution carries forward, or set it on that cycle directly.
+- **A rollover balance didn't carry into the next cycle.** Rollover only
+  chains through budget periods you actually open/set up. Use **Copy
+  previous** when starting the next cycle, or just visit the new period
+  directly — its opening balance is seeded from the prior period automatically.

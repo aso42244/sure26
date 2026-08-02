@@ -701,13 +701,7 @@ components:
           type: string
         display_budgeted_spending_cents:
           type: integer
-        contribution_amount:
-          type: string
-          nullable: true
-        contribution_amount_cents:
-          type: integer
-          nullable: true
-        sinking_fund:
+        rollover_enabled:
           type: boolean
         actual_spending:
           type: string
@@ -717,10 +711,10 @@ components:
           type: string
         available_to_spend_cents:
           type: integer
-        fund_balance:
+        rollover_balance:
           type: string
           nullable: true
-        fund_balance_cents:
+        rollover_balance_cents:
           type: integer
           nullable: true
         category:

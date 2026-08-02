@@ -7,7 +7,6 @@ class BudgetCategory < ApplicationRecord
   validates :budget_id, uniqueness: { scope: :category_id }
 
   monetize :budgeted_spending, :available_to_spend, :avg_monthly_expense, :median_monthly_expense, :actual_spending
-  monetize :contribution_amount, allow_nil: true
 
   class Group
     attr_reader :budget_category, :budget_subcategories
@@ -65,34 +64,28 @@ class BudgetCategory < ApplicationRecord
     end
   end
 
-  # A category becomes a sinking fund once it has a positive per-cycle
-  # contribution. Its surplus then accumulates across periods via the
-  # BudgetCategoryFund ledger.
-  def sinking_fund?
-    contribution_amount.present? && contribution_amount.to_d.positive?
+  # This category's rollover ledger row for this budget period, if any.
+  # Rollover only applies to top-level categories.
+  def rollover
+    return nil if category_id.blank? || subcategory?
+
+    @rollover ||= BudgetCategoryRollover.find_by(budget_id: budget_id, category_id: category_id)
   end
 
-  # This category's fund row for this budget period, if any.
-  def fund
-    return nil if category_id.blank?
+  # The running balance carried into the next period (opening + this
+  # period's budgeted amount - actual spend), positive or negative. Nil for
+  # categories that don't have rollover on.
+  def rollover_balance_money
+    return nil unless rollover_enabled? || rollover
 
-    @fund ||= BudgetCategoryFund.find_by(budget_id: budget_id, category_id: category_id)
+    Money.new(rollover&.balance || 0, budget.family.currency)
   end
 
-  # Accumulated fund balance carried into the next period (opening +
-  # contribution - actual spend). Nil for non-fund categories.
-  def fund_balance_money
-    return nil unless sinking_fund? || fund
-
-    Money.new(fund&.balance || 0, budget.family.currency)
-  end
-
-  def update_contribution!(new_contribution_amount)
+  def set_rollover_enabled!(enabled)
     self.class.transaction do
-      normalized = new_contribution_amount.presence
-      update!(contribution_amount: normalized)
-      @fund = nil
-      Budget::FundRoller.sync!(budget)
+      update!(rollover_enabled: enabled)
+      @rollover = nil
+      Budget::RolloverRoller.sync!(budget)
     end
   end
 
@@ -132,6 +125,13 @@ class BudgetCategory < ApplicationRecord
   end
 
   def available_to_spend
+    # Rollover replaces the plain calc entirely for this category: the running
+    # balance (opening + this period's budgeted amount - actual spend) IS the
+    # available-to-spend figure, positive or negative. Subcategory pooling
+    # below is unaffected -- it still reads this category's raw
+    # budgeted_spending, not the rolled-over balance.
+    return (rollover&.balance || 0) if !subcategory? && rollover_enabled?
+
     if inherits_parent_budget?
       # Subcategories using parent budget share the parent's available_to_spend
       parent = parent_budget_category

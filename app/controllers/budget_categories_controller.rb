@@ -33,8 +33,8 @@ class BudgetCategoriesController < ApplicationController
     @budget_category = Current.family.budget_categories.find(params[:id])
     @budget_category.update_budgeted_spending!(budgeted_spending_param)
 
-    if params.require(:budget_category).key?(:contribution_amount)
-      @budget_category.update_contribution!(contribution_param)
+    if params.require(:budget_category).key?(:rollover_enabled)
+      @budget_category.set_rollover_enabled!(rollover_enabled_param)
     end
 
     respond_to do |format|
@@ -53,11 +53,10 @@ class BudgetCategoriesController < ApplicationController
         .presence || 0
     end
 
-    def contribution_param
-      params.require(:budget_category)
-        .permit(:contribution_amount)
-        .fetch(:contribution_amount, nil)
-        .presence
+    def rollover_enabled_param
+      ActiveModel::Type::Boolean.new.cast(
+        params.require(:budget_category).permit(:rollover_enabled)[:rollover_enabled]
+      )
     end
 
     def set_budget
