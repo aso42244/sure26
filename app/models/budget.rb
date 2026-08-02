@@ -168,6 +168,40 @@ class Budget < ApplicationRecord
     budget_categories.any?(&:rollover_enabled?) || budget_category_rollovers.exists?
   end
 
+  # Raised when a between-category transfer is rejected up front (bad amount,
+  # ineligible category, closed period, etc.). The controller rescues this to
+  # show a friendly message instead of a 500.
+  class TransferError < StandardError; end
+
+  # Manually move `amount` (a positive dollar figure) from one budget category
+  # to another within this period -- the "take $50 out of Groceries, add it to
+  # Car Repairs" flow. Only the current open period can be edited: closed
+  # periods are frozen (their rollover balances have already been carried
+  # forward), matching how the rest of the rollover system behaves. Each side
+  # is moved via BudgetCategory#adjust_available!, which picks the right lever
+  # (rollover stash vs. this period's budgeted amount) per category.
+  def transfer_category_funds!(from_category_id:, to_category_id:, amount:)
+    amount = BigDecimal(amount.to_s) rescue nil
+    raise TransferError, :invalid_amount if amount.nil? || amount <= 0
+    raise TransferError, :same_category if from_category_id.to_s == to_category_id.to_s
+    raise TransferError, :closed_period unless current?
+
+    source = transferable_category(from_category_id)
+    destination = transferable_category(to_category_id)
+    raise TransferError, :ineligible_category if source.nil? || destination.nil?
+
+    Budget.transaction do
+      source.adjust_available!(-amount)
+      destination.adjust_available!(amount)
+    end
+  end
+
+  # Budget categories eligible to be a transfer endpoint: top-level
+  # categories and subcategories that have their own individual limit.
+  def transferable_budget_categories
+    budget_categories.includes(:category).select(&:transferable?)
+  end
+
   def uncategorized_budget_category
     budget_categories.uncategorized.tap do |bc|
       bc.budgeted_spending = [ available_to_allocate, 0 ].max
@@ -399,6 +433,12 @@ class Budget < ApplicationRecord
   end
 
   private
+    # The budget category for `category_id` in this budget, but only if it is
+    # eligible to be a transfer endpoint (see BudgetCategory#transferable?).
+    def transferable_category(category_id)
+      transferable_budget_categories.detect { |bc| bc.category_id.to_s == category_id.to_s }
+    end
+
     def anchor_date_absent_unless_biweekly
       if !biweekly? && anchor_date.present?
         errors.add(:anchor_date, :must_be_blank_for_monthly)

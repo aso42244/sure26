@@ -23,6 +23,19 @@
         <div class="max-w-md mx-auto">
           <%= render "budget_categories/allocation_progress", budget: @budget %>
 
+          <% if @budget.current? && @budget.transferable_budget_categories.size >= 2 %>
+            <div class="flex justify-end mb-4">
+              <%= render DS::Link.new(
+                    text: t("budget_categories.index.move_money"),
+                    href: new_budget_budget_category_transfer_path(@budget),
+                    variant: :outline,
+                    size: :sm,
+                    icon: "arrow-right-left",
+                    frame: :modal
+                  ) %>
+            </div>
+          <% end %>
+
           <div class="space-y-4 mb-4">
             <% BudgetCategory::Group.for(@budget_categories).sort_by(&:name).each do |group| %>
               <div class="space-y-4">

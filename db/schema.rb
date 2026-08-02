@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_02_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_02_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -383,6 +383,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_02_000000) do
     t.datetime "finalized_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "adjustments", precision: 19, scale: 4, default: "0.0", null: false
     t.index ["budget_id", "category_id"], name: "index_budget_category_rollovers_on_budget_id_and_category_id", unique: true
     t.index ["budget_id"], name: "index_budget_category_rollovers_on_budget_id"
     t.index ["category_id"], name: "index_budget_category_rollovers_on_category_id"

@@ -20,7 +20,7 @@ class BudgetCategoryRollover < ApplicationRecord
   belongs_to :budget
   belongs_to :category
 
-  monetize :opening_balance, :actual_spend, :closing_balance
+  monetize :opening_balance, :actual_spend, :closing_balance, :adjustments
 
   validates :budget_id, uniqueness: { scope: :category_id }
   validates :opening_balance, presence: true
@@ -37,9 +37,12 @@ class BudgetCategoryRollover < ApplicationRecord
   end
 
   # The balance carried into the next period. Frozen after finalize.
+  # `adjustments` is the running total of manual between-category transfers
+  # into (+) or out of (-) this category's stash for the period; it survives
+  # the roller's re-seeding of opening_balance.
   def balance
     return closing_balance if finalized?
-    (opening_balance || 0) + live_budgeted_spending - live_actual_spend
+    (opening_balance || 0) + (adjustments || 0) + live_budgeted_spending - live_actual_spend
   end
 
   # Freeze this period's actuals and closing balance. Idempotent.
@@ -49,7 +52,7 @@ class BudgetCategoryRollover < ApplicationRecord
     spent = live_actual_spend
     update!(
       actual_spend: spent,
-      closing_balance: (opening_balance || 0) + live_budgeted_spending - spent,
+      closing_balance: (opening_balance || 0) + (adjustments || 0) + live_budgeted_spending - spent,
       finalized_at: as_of
     )
     self
