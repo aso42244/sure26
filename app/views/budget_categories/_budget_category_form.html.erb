@@ -12,7 +12,6 @@
   </div>
 
   <div class="ml-auto">
-    <% show_rollover = !budget_category.subcategory? %>
     <%= form_with model: [budget_category.budget, budget_category], data: { controller: "auto-submit-form preserve-focus" } do |f| %>
       <div class="flex items-start gap-3">
         <div class="form-field w-[120px]">
@@ -35,14 +34,13 @@
           <% end %>
         </div>
 
-        <% if show_rollover %>
-          <label class="flex items-center gap-1.5 text-xs text-secondary pt-2" title="<%= t("budget_categories.budget_category_form.rollover_title") %>">
-            <%= f.check_box :rollover_enabled,
-                            class: "checkbox",
-                            data: { auto_submit_form_target: "auto" } %>
-            <%= t("budget_categories.budget_category_form.rollover_label") %>
-          </label>
-        <% end %>
+        <% rollover_title = budget_category.inherits_parent_budget? ? t("budget_categories.budget_category_form.rollover_title_shared") : t("budget_categories.budget_category_form.rollover_title") %>
+        <label class="flex items-center gap-1.5 text-xs text-secondary pt-2" title="<%= rollover_title %>">
+          <%= f.check_box :rollover_enabled,
+                          class: "checkbox",
+                          data: { auto_submit_form_target: "auto" } %>
+          <%= t("budget_categories.budget_category_form.rollover_label") %>
+        </label>
       </div>
     <% end %>
   </div>
