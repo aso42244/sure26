@@ -29,14 +29,21 @@ x-rails-env: &rails_env
   <<: *db_env
   SECRET_KEY_BASE: ${SECRET_KEY_BASE:?Set SECRET_KEY_BASE in the stack env}
   SELF_HOSTED: "true"
-  RAILS_FORCE_SSL: "false"
-  RAILS_ASSUME_SSL: "false"
+  RAILS_FORCE_SSL: ${RAILS_FORCE_SSL:-false}
+  RAILS_ASSUME_SSL: ${RAILS_ASSUME_SSL:-false}
   DB_HOST: db
   DB_PORT: 5432
   REDIS_URL: redis://redis:6379/1
   SURE_SOURCE_REPO: ${SURE_SOURCE_REPO:-aso42244/sure26}
   BUILD_COMMIT_SHA: ${BUILD_COMMIT_SHA:-}
   OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN:-}
+  # Optional: set these three together to enable ActiveRecord Encryption for
+  # provider tokens, MFA secrets, and PII. Generate with `openssl rand -hex 32`
+  # each. Leaving them unset stores that data in plaintext (Settings > Security
+  # will warn). Never change these once data has been encrypted with them.
+  ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: ${ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY:-}
+  ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY: ${ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY:-}
+  ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT: ${ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT:-}
 
 services:
   web:
