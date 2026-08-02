@@ -91,6 +91,24 @@ of leaving it at $0 sharing the parent's pool) — otherwise there's nothing
 independent for it to roll. The running **Balance** is shown beneath the
 amount once rollover is active.
 
+### Moving money between categories
+On the **Categories** page there's a **Move money** button. It opens a small
+dialog where you pick a **From** category, a **To** category, and an amount —
+the "take $50 out of Groceries, add it to Car Repairs" flow. This only affects
+the **current** period (closed periods are frozen), and both categories must
+have their own budget amount (a subcategory sharing its parent's pool isn't
+eligible until you give it its own amount).
+
+What actually moves depends on the category:
+
+- **Rollover on:** the money comes out of the category's accumulated balance,
+  so you can move funds you've saved up over many prior cycles — not just this
+  cycle's contribution — and this cycle's planned amount is left unchanged.
+- **Rollover off:** this period's budgeted amount is moved instead.
+
+Moving more than a category currently has is allowed; it simply leaves that
+category with a negative balance for the period.
+
 ---
 
 ## 3. Deploying Sure26 with Docker Compose

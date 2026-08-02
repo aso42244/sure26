@@ -386,6 +386,7 @@ Rails.application.routes.draw do
     get :picker, on: :collection
 
     resources :budget_categories, only: %i[index show update]
+    resources :budget_category_transfers, only: %i[new create]
   end
 
   resources :goals do

@@ -94,6 +94,35 @@ class BudgetCategory < ApplicationRecord
     end
   end
 
+  # True when this category has its own independent figure to move money into
+  # or out of -- a top-level category, or a subcategory once it's been given
+  # an individual limit. A subcategory still sharing its parent's pool does
+  # not qualify (no independent balance of its own), matching the rollover
+  # rule. Used to gate which categories can be a transfer endpoint.
+  def transferable?
+    category_id.present? && !inherits_parent_budget?
+  end
+
+  # Move `delta` (a positive or negative dollar amount) into this category's
+  # available balance for the period. For a rollover category the money comes
+  # from / goes to its accumulated stash (the adjustments field on the ledger
+  # row), so a transfer can draw on funds saved across prior periods, not just
+  # this period's fresh contribution. For a non-rollover category the only
+  # lever is this period's budgeted amount, so we adjust that (reusing the
+  # existing parent-reserve math).
+  def adjust_available!(delta)
+    self.class.transaction do
+      if rollover_enabled? && !inherits_parent_budget?
+        Budget::RolloverRoller.sync!(budget) # ensure the ledger row exists and is seeded
+        row = BudgetCategoryRollover.lock.find_by!(budget_id: budget_id, category_id: category_id)
+        row.update!(adjustments: (row.adjustments || 0) + delta)
+        @rollover = nil
+      else
+        update_budgeted_spending!((self[:budgeted_spending] || 0) + delta)
+      end
+    end
+  end
+
   def avg_monthly_expense
     budget.category_avg_monthly_expense(category)
   end

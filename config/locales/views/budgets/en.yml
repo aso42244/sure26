@@ -88,6 +88,7 @@ en:
     index:
       title: "Edit your category budgets"
       description: "Adjust category budgets to set spending limits. Unallocated funds will be automatically assigned as uncategorized."
+      move_money: "Move money"
     show:
       category: "Category"
       overview: "Overview"
@@ -101,3 +102,23 @@ en:
       recent_transactions: "Recent Transactions"
       view_all_transactions: "View all category transactions"
       no_transactions: "No transactions found for this budget period."
+  budget_category_transfers:
+    new:
+      title: "Move money between categories"
+      subtitle: "Reassign this period's available money from one category to another."
+      from_label: "From"
+      to_label: "To"
+      amount_label: "Amount"
+      select_placeholder: "Select a category"
+      hint: "Only the current period is affected. Moving more than a category has can leave it with a negative balance."
+      not_enough_categories: "You need at least two categories with their own budget amount to move money between them."
+      cancel: "Cancel"
+      submit: "Move money"
+    create:
+      success: "Money moved between categories."
+      errors:
+        invalid_amount: "Enter an amount greater than zero."
+        same_category: "Pick two different categories."
+        closed_period: "You can only move money within the current budget period."
+        ineligible_category: "Both categories must have their own budget amount. Give a subcategory its own amount before moving money to or from it."
+        generic: "That transfer couldn't be completed."
