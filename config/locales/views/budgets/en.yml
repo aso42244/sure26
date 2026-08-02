@@ -71,10 +71,10 @@ en:
       over_set: "> 100% set"
       percent_set: "%{percent} set"
     budget_category_form:
-      contribution_placeholder: Contribution
-      contribution_title: Amount to set aside each cycle. Surplus carries over.
-      fund_balance: "Fund: %{amount}"
       monthly_average: "%{amount}/m avg"
+      rollover_balance: "Balance: %{amount}"
+      rollover_label: Roll over
+      rollover_title: Unused budget (or overspend) carries into the next period, positive or negative.
       shared_placeholder: Shared
       shared_title: Leave empty to share parent's budget
     confirm_button:

@@ -64,28 +64,28 @@ class BudgetCategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#{uncategorized_form_selector} p.text-secondary.privacy-sensitive", text: /\/m avg/
   end
 
-  test "setting a contribution creates a sinking-fund ledger row" do
-    assert_difference "BudgetCategoryFund.count", 1 do
+  test "enabling rollover creates a rollover ledger row" do
+    assert_difference "BudgetCategoryRollover.count", 1 do
       patch budget_budget_category_path(@budget, @parent_budget_category),
-            params: { budget_category: { budgeted_spending: 500, contribution_amount: 150 } },
+            params: { budget_category: { budgeted_spending: 500, rollover_enabled: "1" } },
             as: :turbo_stream
     end
 
     assert_response :success
-    assert @parent_budget_category.reload.sinking_fund?
-    fund = BudgetCategoryFund.find_by!(budget_id: @budget.id, category_id: @parent_category.id)
-    assert_equal 150, fund.contribution
+    assert @parent_budget_category.reload.rollover_enabled?
+    rollover = BudgetCategoryRollover.find_by!(budget_id: @budget.id, category_id: @parent_category.id)
+    assert_equal 0, rollover.opening_balance
   end
 
-  test "clearing a contribution stops the category being a sinking fund" do
-    @parent_budget_category.update_contribution!(150)
+  test "disabling rollover clears the flag" do
+    @parent_budget_category.set_rollover_enabled!(true)
 
     patch budget_budget_category_path(@budget, @parent_budget_category),
-          params: { budget_category: { budgeted_spending: 500, contribution_amount: "" } },
+          params: { budget_category: { budgeted_spending: 500, rollover_enabled: "0" } },
           as: :turbo_stream
 
     assert_response :success
-    refute @parent_budget_category.reload.sinking_fund?
+    refute @parent_budget_category.reload.rollover_enabled?
   end
 
   test "updating a subcategory adjusts the parent budget by the same delta" do

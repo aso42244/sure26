@@ -22,7 +22,7 @@
 > **Sure26 is an independent, modified fork of [Sure](https://github.com/we-promise/sure).**
 > It is **not affiliated with, sponsored, or endorsed by** the upstream Sure project or its maintainers, and it does not use the former "Maybe" name or logo.
 >
-> Sure26 adds an **optional biweekly (exact 14-day) budgeting cadence** with per-cycle sinking-fund contributions, while preserving all existing monthly behavior. See [`docs/biweekly-budgets.md`](docs/biweekly-budgets.md).
+> Sure26 adds an **optional biweekly (exact 14-day) budgeting cadence** with per-category budget rollover (positive or negative), while preserving all existing monthly behavior. See [`docs/biweekly-budgets.md`](docs/biweekly-budgets.md).
 >
 > Sure26 is distributed under the **GNU AGPLv3**, the same license as upstream Sure (see [`LICENSE`](LICENSE)). In keeping with the AGPL, the running application links every user to the corresponding source for the exact deployed version. When you run your own deployment, set `SURE_SOURCE_REPO=owner/repo` so those links point at your published source, and tag the commit you deploy.
 

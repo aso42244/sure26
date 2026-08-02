@@ -12,7 +12,7 @@
   </div>
 
   <div class="ml-auto">
-    <% show_contribution = budget_category.budget.biweekly? || budget_category.sinking_fund? %>
+    <% show_rollover = !budget_category.subcategory? %>
     <%= form_with model: [budget_category.budget, budget_category], data: { controller: "auto-submit-form preserve-focus" } do |f| %>
       <div class="flex items-start gap-3">
         <div class="form-field w-[120px]">
@@ -27,27 +27,21 @@
                               data: { auto_submit_form_target: "auto" },
                               title: budget_category.subcategory? ? t("budget_categories.budget_category_form.shared_title") : nil %>
           </div>
+
+          <% if (balance = budget_category.rollover_balance_money) %>
+            <p class="text-xs text-secondary text-right mt-1 privacy-sensitive">
+              <%= t("budget_categories.budget_category_form.rollover_balance", amount: balance.format(precision: 0)) %>
+            </p>
+          <% end %>
         </div>
 
-        <% if show_contribution %>
-          <div class="form-field w-[120px]">
-            <div class="flex items-center privacy-sensitive privacy-sensitive-interactive">
-              <span class="text-secondary text-sm mr-2"><%= currency.symbol %></span>
-              <%= f.number_field :contribution_amount,
-                                class: "form-field__input text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                                placeholder: t("budget_categories.budget_category_form.contribution_placeholder"),
-                                step: currency.step,
-                                id: dom_id(budget_category, :contribution_amount),
-                                min: 0,
-                                data: { auto_submit_form_target: "auto" },
-                                title: t("budget_categories.budget_category_form.contribution_title") %>
-            </div>
-            <% if (balance = budget_category.fund_balance_money) %>
-              <p class="text-xs text-secondary text-right mt-1 privacy-sensitive">
-                <%= t("budget_categories.budget_category_form.fund_balance", amount: balance.format(precision: 0)) %>
-              </p>
-            <% end %>
-          </div>
+        <% if show_rollover %>
+          <label class="flex items-center gap-1.5 text-xs text-secondary pt-2" title="<%= t("budget_categories.budget_category_form.rollover_title") %>">
+            <%= f.check_box :rollover_enabled,
+                            class: "checkbox",
+                            data: { auto_submit_form_target: "auto" } %>
+            <%= t("budget_categories.budget_category_form.rollover_label") %>
+          </label>
         <% end %>
       </div>
     <% end %>
