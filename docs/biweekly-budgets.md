@@ -30,9 +30,14 @@ daylight-saving changes, and calendar years that contain **27** cycle starts
 (not always 26).
 
 ### Budget rollover (positive or negative, funding independent of payment)
-Any top-level budget category — in a monthly **or** biweekly budget — can have
-**Roll over** turned on. When it's on, whatever's left in that category at the
-end of a period (or however far over you went) carries into the next period,
+Any budget category with its own individual budgeted amount — a top-level
+category, or a subcategory once it's given its own limit instead of sharing
+its parent's pool — in a monthly **or** biweekly budget can have **Roll over**
+turned on. A subcategory still sharing its parent's pool has no independent
+figure to roll on its own; it automatically reflects the parent's rollover
+(if the parent has it on) through the existing shared-pool math. When rollover
+is on, whatever's left in that category at the end of a period (or however far
+over you went) carries into the next period,
 added to whatever you budget there next. Nothing is auto-adjusted, and the
 carry can go negative:
 
@@ -80,9 +85,11 @@ been using. To go back, repeat the steps and choose **Monthly**; that also only
 affects future periods.
 
 ### Turning on rollover for a category
-Open a budget, go to **Categories**, and check **Roll over** next to a
-top-level category. The running **Balance** is shown beneath the amount once
-it's on.
+Open a budget, go to **Categories**, and check **Roll over** next to any
+category. For a subcategory, give it its own individual amount first (instead
+of leaving it at $0 sharing the parent's pool) — otherwise there's nothing
+independent for it to roll. The running **Balance** is shown beneath the
+amount once rollover is active.
 
 ---
 

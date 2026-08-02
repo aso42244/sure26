@@ -75,6 +75,7 @@ en:
       rollover_balance: "Balance: %{amount}"
       rollover_label: Roll over
       rollover_title: Unused budget (or overspend) carries into the next period, positive or negative.
+      rollover_title_shared: Give this an individual budget amount (instead of sharing the parent's) for its own rollover to take effect.
       shared_placeholder: Shared
       shared_title: Leave empty to share parent's budget
     confirm_button:

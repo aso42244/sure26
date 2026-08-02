@@ -11,9 +11,13 @@
 # amount forward). It deliberately does NOT fabricate budgets for cycles the
 # user never engaged.
 #
-# Rollover only applies to top-level categories; subcategories already have
-# their own parent/child budget-sharing math (see BudgetCategory#available_to_spend),
-# and combining both at once is out of scope for now.
+# Rollover applies to any category with its own individual budgeted amount --
+# a top-level category, or a subcategory once it's been given an individual
+# limit (see BudgetCategory#inherits_parent_budget?). A subcategory still
+# sharing its parent's pool has no independent figure to roll on its own; it
+# already reflects the parent's rollover (if any) through the existing
+# shared-pool calc, so it's excluded here to avoid double-tracking the same
+# dollars in two ledgers.
 class Budget::RolloverRoller
   def self.sync!(budget)
     new(budget).sync!
@@ -26,7 +30,7 @@ class Budget::RolloverRoller
 
   def sync!
     categories = budget.budget_categories.select do |bc|
-      bc.category_id.present? && !bc.subcategory? && (bc.rollover_enabled? || rollover_row_exists?(bc.category_id))
+      bc.category_id.present? && !bc.inherits_parent_budget? && (bc.rollover_enabled? || rollover_row_exists?(bc.category_id))
     end
     return if categories.empty?
 

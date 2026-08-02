@@ -65,9 +65,13 @@ class BudgetCategory < ApplicationRecord
   end
 
   # This category's rollover ledger row for this budget period, if any.
-  # Rollover only applies to top-level categories.
+  # Rollover applies to any category with its own budgeted amount -- a
+  # top-level category, or a subcategory once it's given an individual limit.
+  # A subcategory still sharing the parent's pool has no independent figure
+  # to roll over on its own; it already reflects the parent's rollover
+  # (if any) through the shared-pool calc in available_to_spend.
   def rollover
-    return nil if category_id.blank? || subcategory?
+    return nil if category_id.blank? || inherits_parent_budget?
 
     @rollover ||= BudgetCategoryRollover.find_by(budget_id: budget_id, category_id: category_id)
   end
@@ -76,6 +80,7 @@ class BudgetCategory < ApplicationRecord
   # period's budgeted amount - actual spend), positive or negative. Nil for
   # categories that don't have rollover on.
   def rollover_balance_money
+    return nil if inherits_parent_budget?
     return nil unless rollover_enabled? || rollover
 
     Money.new(rollover&.balance || 0, budget.family.currency)
@@ -127,10 +132,11 @@ class BudgetCategory < ApplicationRecord
   def available_to_spend
     # Rollover replaces the plain calc entirely for this category: the running
     # balance (opening + this period's budgeted amount - actual spend) IS the
-    # available-to-spend figure, positive or negative. Subcategory pooling
-    # below is unaffected -- it still reads this category's raw
-    # budgeted_spending, not the rolled-over balance.
-    return (rollover&.balance || 0) if !subcategory? && rollover_enabled?
+    # available-to-spend figure, positive or negative. Applies to a top-level
+    # category or a subcategory with its own individual limit -- not one still
+    # sharing the parent's pool, which has no independent figure to roll and
+    # instead inherits the parent's (possibly rolled-over) pool below as usual.
+    return (rollover&.balance || 0) if rollover_enabled? && !inherits_parent_budget?
 
     if inherits_parent_budget?
       # Subcategories using parent budget share the parent's available_to_spend

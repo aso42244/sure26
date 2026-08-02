@@ -172,18 +172,65 @@ class Budget::RolloverTest < ActiveSupport::TestCase
     assert_equal 250, bc2.available_to_spend # 200 + (200-150) carried
   end
 
-  test "rollover is not offered for subcategories" do
+  test "rollover is a no-op for a subcategory still sharing the parent's pool" do
     parent = Category.create!(name: "Parent #{Time.now.to_f}", family: @family, lucide_icon: "wallet")
     child = Category.create!(name: "Child #{Time.now.to_f}", family: @family, parent: parent)
 
     budget = cycle_budget(0)
     child_bc = budget.budget_categories.find_by!(category_id: child.id)
-    child_bc.update!(budgeted_spending: 50)
+    assert child_bc.inherits_parent_budget? # default $0 budgeted -> shared pool
     child_bc.set_rollover_enabled!(true)
     budget.sync_category_rollovers!
 
-    # Subcategory pooling still applies -- rollover is a no-op for it.
     refute child_bc.rollover
     refute BudgetCategoryRollover.exists?(budget_id: budget.id, category_id: child.id)
+  end
+
+  test "a subcategory with its own individual limit rolls over independently" do
+    parent = Category.create!(name: "Parent #{Time.now.to_f}", family: @family, lucide_icon: "wallet")
+    child = Category.create!(name: "Child #{Time.now.to_f}", family: @family, parent: parent)
+
+    payment_date = @anchor + 5
+    create_transaction(account: @account, amount: 20, date: payment_date, category: child)
+
+    c1 = cycle_budget(0)
+    child_bc1 = c1.budget_categories.find_by!(category_id: child.id)
+    child_bc1.update_budgeted_spending!(50) # individual limit, no longer inheriting
+    refute child_bc1.inherits_parent_budget?
+    child_bc1.set_rollover_enabled!(true)
+    c1.sync_category_rollovers!
+
+    c2 = cycle_budget(1)
+    child_bc2 = c2.budget_categories.find_by!(category_id: child.id)
+    child_bc2.update_budgeted_spending!(50)
+    child_bc2.set_rollover_enabled!(true)
+    c2.sync_category_rollovers!
+
+    assert_equal 30, child_bc1.available_to_spend # 50 - 20
+    assert_equal 80, child_bc2.available_to_spend # 50 + 30 carried
+  end
+
+  test "a subcategory sharing the parent's pool reflects the parent's own rollover" do
+    parent_category = Category.create!(name: "Parent #{Time.now.to_f}", family: @family, lucide_icon: "wallet")
+    child = Category.create!(name: "Child #{Time.now.to_f}", family: @family, parent: parent_category)
+
+    c1 = cycle_budget(0)
+    parent_bc1 = c1.budget_categories.find_by!(category_id: parent_category.id)
+    parent_bc1.update_budgeted_spending!(500)
+    parent_bc1.set_rollover_enabled!(true)
+    c1.sync_category_rollovers!
+    assert_equal 500, parent_bc1.available_to_spend # nothing spent
+
+    c2 = cycle_budget(1)
+    parent_bc2 = c2.budget_categories.find_by!(category_id: parent_category.id)
+    parent_bc2.update_budgeted_spending!(500)
+    parent_bc2.set_rollover_enabled!(true)
+    c2.sync_category_rollovers!
+
+    child_bc2 = c2.budget_categories.find_by!(category_id: child.id)
+    assert child_bc2.inherits_parent_budget?
+    # The still-inheriting child reads the parent's rolled-over pool directly.
+    assert_equal parent_bc2.available_to_spend, child_bc2.available_to_spend
+    assert_equal 1000, child_bc2.available_to_spend # 500 + 500 carried
   end
 end
