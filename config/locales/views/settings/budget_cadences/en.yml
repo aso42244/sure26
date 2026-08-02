@@ -12,6 +12,10 @@ en:
         current_label: Current cadence
         monthly_current: Monthly
         biweekly_current: "Every 2 weeks, anchored to %{anchor}"
+        pending_title: Scheduled change
+        pending_biweekly: "Every 2 weeks, anchored to %{anchor} — starts %{effective}"
+        pending_monthly: "Monthly — starts %{effective}"
+        pending_hint: Applying a new change replaces this one.
         effective_dated_warning: Changing the cadence never rewrites past or in-progress budgets. It only changes how future budget periods are generated.
         cadence_label: Cadence
         cadence_monthly: Monthly
