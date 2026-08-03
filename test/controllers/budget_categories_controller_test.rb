@@ -88,6 +88,50 @@ class BudgetCategoriesControllerTest < ActionDispatch::IntegrationTest
     refute @parent_budget_category.reload.rollover_enabled?
   end
 
+  test "index renders an editable balance field for rollover categories" do
+    @parent_budget_category.set_rollover_enabled!(true)
+    @budget.sync_category_rollovers!
+
+    get budget_budget_categories_path(@budget)
+
+    assert_response :success
+    assert_select "##{dom_id(@parent_budget_category, :rollover_balance)}"
+  end
+
+  test "setting the balance directly updates available to spend" do
+    @parent_budget_category.set_rollover_enabled!(true)
+    @budget.sync_category_rollovers!
+
+    patch budget_budget_category_path(@budget, @parent_budget_category),
+          params: { budget_category: { rollover_balance: 900 } },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal 900, @parent_budget_category.reload.available_to_spend
+  end
+
+  # The balance posts from its own form and carries no amount field. Acting on
+  # an absent key would reset the budget to 0.
+  test "submitting only the balance leaves budgeted spending untouched" do
+    @parent_budget_category.set_rollover_enabled!(true)
+    @budget.sync_category_rollovers!
+
+    patch budget_budget_category_path(@budget, @parent_budget_category),
+          params: { budget_category: { rollover_balance: 900 } },
+          as: :turbo_stream
+
+    assert_equal 500, @parent_budget_category.reload.budgeted_spending
+  end
+
+  test "setting the balance is ignored when rollover is off" do
+    patch budget_budget_category_path(@budget, @parent_budget_category),
+          params: { budget_category: { rollover_balance: 900 } },
+          as: :turbo_stream
+
+    assert_response :success
+    refute BudgetCategoryRollover.exists?(budget_id: @budget.id, category_id: @parent_category.id)
+  end
+
   test "updating a subcategory adjusts the parent budget by the same delta" do
     assert_changes -> { @parent_budget_category.reload.budgeted_spending.to_f }, from: 500.0, to: 550.0 do
       patch budget_budget_category_path(@budget, @electric_budget_category),

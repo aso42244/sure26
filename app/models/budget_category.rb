@@ -103,6 +103,21 @@ class BudgetCategory < ApplicationRecord
     category_id.present? && !inherits_parent_budget?
   end
 
+  # Set this category's running balance to `target` outright. Only meaningful
+  # for a category whose balance actually carries between periods (rollover on,
+  # and not sharing a parent's pool) -- otherwise there is nothing to hold the
+  # value and it would silently vanish at the next cycle.
+  def set_rollover_balance!(target)
+    return unless rollover_enabled? && !inherits_parent_budget?
+
+    self.class.transaction do
+      Budget::RolloverRoller.sync!(budget) # ensure the ledger row exists and is seeded
+      row = BudgetCategoryRollover.lock.find_by!(budget_id: budget_id, category_id: category_id)
+      row.set_balance!(target)
+      @rollover = nil
+    end
+  end
+
   # Move `delta` (a positive or negative dollar amount) into this category's
   # available balance for the period. For a rollover category the money comes
   # from / goes to its accumulated stash (the adjustments field on the ledger

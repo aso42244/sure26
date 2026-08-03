@@ -27,11 +27,6 @@
                               title: budget_category.subcategory? ? t("budget_categories.budget_category_form.shared_title") : nil %>
           </div>
 
-          <% if (balance = budget_category.rollover_balance_money) %>
-            <p class="text-xs text-secondary text-right mt-1 privacy-sensitive">
-              <%= t("budget_categories.budget_category_form.rollover_balance", amount: balance.format(precision: 0)) %>
-            </p>
-          <% end %>
         </div>
 
         <% rollover_title = budget_category.inherits_parent_budget? ? t("budget_categories.budget_category_form.rollover_title_shared") : t("budget_categories.budget_category_form.rollover_title") %>
@@ -42,6 +37,29 @@
           <%= t("budget_categories.budget_category_form.rollover_label") %>
         </label>
       </div>
+    <% end %>
+
+    <%# The running balance is editable in its own form: typing a number sets
+        the balance to exactly that, absorbing the difference so an envelope can
+        be seeded with what it really holds. Separate from the form above so
+        each field posts only itself. %>
+    <% if (balance = budget_category.rollover_balance_money) %>
+      <%= form_with model: [budget_category.budget, budget_category], data: { controller: "auto-submit-form" } do |bf| %>
+        <div class="flex items-center justify-end gap-1 mt-1">
+          <%= bf.label :rollover_balance, t("budget_categories.budget_category_form.rollover_balance_label"),
+                       class: "text-xs text-secondary" %>
+          <div class="flex items-center privacy-sensitive privacy-sensitive-interactive">
+            <span class="text-secondary text-xs mr-1"><%= currency.symbol %></span>
+            <%= bf.number_field :rollover_balance,
+                                value: balance.amount,
+                                class: "form-field__input text-right text-xs w-[70px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                step: currency.step,
+                                id: dom_id(budget_category, :rollover_balance),
+                                data: { auto_submit_form_target: "auto" },
+                                title: t("budget_categories.budget_category_form.rollover_balance_title") %>
+          </div>
+        </div>
+      <% end %>
     <% end %>
   </div>
 </div>

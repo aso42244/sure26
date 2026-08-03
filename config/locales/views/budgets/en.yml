@@ -73,6 +73,8 @@ en:
     budget_category_form:
       monthly_average: "%{amount}/m avg"
       rollover_balance: "Balance: %{amount}"
+      rollover_balance_label: "Balance"
+      rollover_balance_title: "What this category currently holds. Type a number to set it directly — useful for seeding an envelope with money it already has."
       rollover_label: Roll over
       rollover_title: Unused budget (or overspend) carries into the next period, positive or negative.
       rollover_title_shared: Give this an individual budget amount (instead of sharing the parent's) for its own rollover to take effect.

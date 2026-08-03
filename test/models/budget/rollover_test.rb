@@ -172,6 +172,89 @@ class Budget::RolloverTest < ActiveSupport::TestCase
     assert_equal 250, bc2.available_to_spend # 200 + (200-150) carried
   end
 
+  # Setting a balance only applies to a live period -- closed ones are frozen --
+  # so these use an isolated family whose CURRENT cycle is open. A dedicated
+  # family also avoids colliding with the dylan_family budget fixture, whose
+  # start date can coincide with a cycle boundary depending on today's date.
+  def open_cycle_family
+    @open_family ||= begin
+      family = families(:empty)
+      @open_account = Account.create!(family: family, accountable: Depository.new, name: "Checking", status: "active", currency: "USD", balance: 1000)
+      @open_category = Category.create!(name: "Envelope #{Time.now.to_f}", family: family, lucide_icon: "wallet")
+      anchor = Date.current - 6 # current cycle spans today-6 .. today+7
+      family.budget_schedules.create!(cadence: "biweekly", anchor_date: anchor, effective_from: anchor)
+      family
+    end
+  end
+
+  def open_cycle_budget(offset_days = 0)
+    Budget.find_or_bootstrap(open_cycle_family, start_date: Date.current + offset_days)
+  end
+
+  def rollover_category(budget, amount, category: @open_category)
+    budget.budget_categories.find_by!(category_id: category.id).tap do |bc|
+      bc.update_budgeted_spending!(amount)
+      bc.set_rollover_enabled!(true)
+      budget.sync_category_rollovers!
+    end
+  end
+
+  # Seeding an envelope at go-live: state what it really holds, without
+  # inventing a transaction to get the money in there.
+  test "setting the balance directly makes available_to_spend match exactly" do
+    budget = open_cycle_budget
+    bc = rollover_category(budget, 100)
+
+    bc.set_rollover_balance!(500)
+
+    assert_equal 500, bc.reload.available_to_spend
+  end
+
+  test "a directly set balance carries into the next period" do
+    current = open_cycle_budget
+    rollover_category(current, 100).set_rollover_balance!(500)
+
+    upcoming = open_cycle_budget(14)
+    bc2 = rollover_category(upcoming, 100)
+
+    assert_equal 600, bc2.available_to_spend # 500 carried + 100 newly budgeted
+  end
+
+  test "setting the balance accounts for spending already in the period" do
+    open_cycle_family # establish the family/category first
+    create_transaction(account: @open_account, amount: 75, date: Date.current, category: @open_category)
+
+    budget = open_cycle_budget
+    bc = rollover_category(budget, 100)
+    assert_equal 25, bc.available_to_spend # 100 budgeted - 75 spent
+
+    bc.set_rollover_balance!(200)
+
+    assert_equal 200, bc.reload.available_to_spend
+  end
+
+  test "setting the balance is ignored without rollover enabled" do
+    budget = open_cycle_budget
+    bc = budget.budget_categories.find_by!(category_id: @open_category.id)
+    bc.update_budgeted_spending!(100)
+
+    bc.set_rollover_balance!(500)
+
+    refute BudgetCategoryRollover.exists?(budget_id: budget.id, category_id: @open_category.id)
+    assert_equal 100 - bc.actual_spending, bc.available_to_spend
+  end
+
+  test "setting the balance never rewrites a closed period" do
+    closed = cycle_budget(0) # fully in the past, on the main test family
+    bc = rollover_category(closed, 150, category: @category)
+    rollover = BudgetCategoryRollover.find_by!(budget_id: closed.id, category_id: @category.id)
+    assert rollover.finalized?
+
+    bc.set_rollover_balance!(999)
+
+    assert_equal 150, rollover.reload.closing_balance
+  end
+
   test "rollover is a no-op for a subcategory still sharing the parent's pool" do
     parent = Category.create!(name: "Parent #{Time.now.to_f}", family: @family, lucide_icon: "wallet")
     child = Category.create!(name: "Child #{Time.now.to_f}", family: @family, parent: parent)
