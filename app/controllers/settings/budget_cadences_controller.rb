@@ -9,11 +9,14 @@ class Settings::BudgetCadencesController < ApplicationController
   def show
     @family = Current.family
     @current_cadence = @family.current_budget_cadence
+    @pending_schedules = @family.budget_schedules.pending
     @preview = build_preview
   end
 
-  # Applies a cadence change by appending a future-dated budget_schedule row.
-  # Historical and current periods are never rewritten.
+  # Applies a cadence change by scheduling a future-dated budget_schedule row.
+  # The new selection supersedes any change that has not taken effect yet, so
+  # the anchor date can be re-picked as often as the user likes. Historical and
+  # in-progress periods are never rewritten.
   def create
     @family = Current.family
     @current_cadence = @family.current_budget_cadence
@@ -22,14 +25,16 @@ class Settings::BudgetCadencesController < ApplicationController
     schedule.effective_from = resolved_effective_from(schedule) if schedule.effective_from.blank?
 
     if schedule.effective_from.present? && !future_effective?(schedule.effective_from)
+      @pending_schedules = @family.budget_schedules.pending
       @preview = build_preview
       flash.now[:alert] = t("settings.budget_cadences.not_future")
       return render :show, status: :unprocessable_entity
     end
 
-    if schedule.save
+    if schedule.supersede_pending!
       redirect_to settings_budget_cadence_path, notice: t("settings.budget_cadences.success")
     else
+      @pending_schedules = @family.budget_schedules.pending
       @preview = build_preview
       flash.now[:alert] = schedule.errors.full_messages.to_sentence
       render :show, status: :unprocessable_entity

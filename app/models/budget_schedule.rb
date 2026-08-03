@@ -16,6 +16,33 @@ class BudgetSchedule < ApplicationRecord
 
   scope :effective_on_or_before, ->(date) { where("effective_from <= ?", date).order(effective_from: :desc) }
 
+  # Changes that have not started governing budgets yet. Shown in settings so a
+  # queued change is visible even while the current cadence still reads as the
+  # old one.
+  scope :pending, -> { where("effective_from > ?", Date.current).order(:effective_from) }
+
+  # Save this schedule as the family's next cadence change, replacing any change
+  # that has not taken effect yet (effective today or later). Rows already in
+  # effect before today are never touched, so past periods keep the boundaries
+  # they were generated with -- and existing Budget records store their own
+  # cadence/anchor anyway, so they are self-describing regardless.
+  #
+  # This is what lets the anchor date be re-picked freely: a new selection
+  # supersedes the previous one instead of colliding with it.
+  def supersede_pending!
+    result = self.class.transaction do
+      scope = family.budget_schedules.where("effective_from >= ?", Date.current)
+      scope = scope.where.not(id: id) if persisted?
+      scope.destroy_all
+
+      raise ActiveRecord::Rollback unless save
+
+      true
+    end
+
+    result.present?
+  end
+
   def biweekly?
     cadence == Budget::Cadence::BIWEEKLY
   end
