@@ -91,6 +91,18 @@ of leaving it at $0 sharing the parent's pool) — otherwise there's nothing
 independent for it to roll. The running **Balance** is shown beneath the
 amount once rollover is active.
 
+### Setting a category's balance directly
+A rollover category shows an editable **Balance** beneath its amount. Typing a
+number sets the balance to exactly that — handy when you first start using
+Sure26 and an envelope already holds money ("Car Repairs really has $500 in
+it"), so you don't have to invent a transaction to get it there.
+
+The amount field and the balance are different things: the **amount** is what
+you add this period, the **balance** is what the category currently holds.
+Setting the balance only works on the current period — closed periods stay
+frozen — and only when rollover is on, since without it there's nothing to
+carry the value forward.
+
 ### Moving money between categories
 On the **Categories** page there's a **Move money** button. It opens a small
 dialog where you pick a **From** category, a **To** category, and an amount —

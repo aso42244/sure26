@@ -31,10 +31,22 @@ class BudgetCategoriesController < ApplicationController
 
   def update
     @budget_category = Current.family.budget_categories.find(params[:id])
-    @budget_category.update_budgeted_spending!(budgeted_spending_param)
+
+    # Each field posts from its own form, so only act on what was actually
+    # submitted -- otherwise the balance form (which carries no amount) would
+    # reset budgeted_spending to 0.
+    if params.require(:budget_category).key?(:budgeted_spending)
+      @budget_category.update_budgeted_spending!(budgeted_spending_param)
+    end
 
     if params.require(:budget_category).key?(:rollover_enabled)
       @budget_category.set_rollover_enabled!(rollover_enabled_param)
+    end
+
+    # Applied last so the target balance is honored against the final budgeted
+    # amount rather than a stale one.
+    if params.require(:budget_category).key?(:rollover_balance)
+      @budget_category.set_rollover_balance!(rollover_balance_param)
     end
 
     respond_to do |format|
@@ -51,6 +63,12 @@ class BudgetCategoriesController < ApplicationController
         .permit(:budgeted_spending)
         .fetch(:budgeted_spending, nil)
         .presence || 0
+    end
+
+    def rollover_balance_param
+      BigDecimal(params.require(:budget_category).permit(:rollover_balance)[:rollover_balance].to_s)
+    rescue ArgumentError, TypeError
+      0
     end
 
     def rollover_enabled_param

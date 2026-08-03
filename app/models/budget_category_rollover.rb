@@ -45,6 +45,17 @@ class BudgetCategoryRollover < ApplicationRecord
     (opening_balance || 0) + (adjustments || 0) + live_budgeted_spending - live_actual_spend
   end
 
+  # Force the running balance to `target` by absorbing the difference into
+  # `adjustments`. Used to seed an envelope with what it really holds ("this
+  # category already has $500 in it") without inventing a transaction. A
+  # finalized (closed) period is never rewritten.
+  def set_balance!(target)
+    return self if finalized?
+
+    update!(adjustments: (adjustments || 0) + (target - balance))
+    self
+  end
+
   # Freeze this period's actuals and closing balance. Idempotent.
   def finalize!(as_of: Time.current)
     return self if finalized?
