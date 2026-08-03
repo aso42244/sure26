@@ -144,7 +144,7 @@ en:
     types:
       depository: Cash
       investment: Investment
-      crypto: Crypto
+      crypto: Bitcoin
       property: Property
       vehicle: Vehicle
       other_asset: Other Asset
@@ -154,7 +154,7 @@ en:
     types_plural:
       depository: Cash
       investment: Investments
-      crypto: Crypto
+      crypto: Bitcoin
       property: Properties
       vehicle: Vehicles
       other_asset: Other Assets
