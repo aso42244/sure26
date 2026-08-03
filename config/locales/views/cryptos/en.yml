@@ -14,7 +14,7 @@ en:
     subtypes:
       wallet:
         short: Wallet
-        long: Crypto Wallet
+        long: Bitcoin Wallet
       exchange:
         short: Exchange
-        long: Crypto Exchange
+        long: Bitcoin Exchange

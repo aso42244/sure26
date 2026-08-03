@@ -20,7 +20,7 @@ en:
     coinbase_items: Coinbase
     coinstats_items: CoinStats
     credit_cards: Credit cards
-    cryptos: Crypto
+    cryptos: Bitcoin
     dashboard: Dashboard
     debug: Debug
     debugs: Debug
