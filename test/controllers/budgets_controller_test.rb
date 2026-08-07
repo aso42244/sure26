@@ -19,6 +19,23 @@ class BudgetsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "show renders a folder category as a collapsible group with a read-only roll-up" do
+    family = @user.family
+    folder = Category.create!(name: "Folder #{Time.now.to_f}", family: family, lucide_icon: "shapes", budgetable: false)
+    child = Category.create!(name: "Child #{Time.now.to_f}", family: family, parent: folder)
+
+    budget = Budget.find_or_bootstrap(family, start_date: Date.current)
+    budget.sync_budget_categories
+    budget.update!(budgeted_spending: 1000, expected_income: 2000) # initialize the budget
+    budget.budget_categories.find_by!(category_id: child.id).update_budgeted_spending!(75)
+
+    get budget_url(Budget.date_to_param(Date.current))
+
+    assert_response :success
+    assert_select "[data-controller='budget-folder']", minimum: 1
+    assert_includes response.body, folder.name
+  end
+
   test "breadcrumbs include the Plan hub for preview users" do
     @user.update!(preferences: (@user.preferences || {}).merge("preview_features_enabled" => true))
 

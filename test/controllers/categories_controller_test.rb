@@ -122,6 +122,15 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to categories_url
   end
 
+  test "marking a top-level category as a folder turns budgeting off" do
+    category = Category.create!(name: "Folderable #{Time.now.to_f}", family: @family, lucide_icon: "shapes")
+
+    patch category_url(category), params: { category: { folder: "1" } }
+
+    refute category.reload.budgetable?
+    assert category.folder?
+  end
+
   test "bootstrap" do
     # 22 default categories minus 2 that already exist in fixtures (Income, Food & Drink)
     assert_difference "Category.count", 20 do

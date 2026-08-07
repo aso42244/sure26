@@ -73,6 +73,17 @@
         <% unless category.parent? %>
           <%= f.select :parent_id, categories.pluck(:name, :id), { include_blank: t(".unassigned"), label: t(".parent_category_label") }, disabled: category.parent?, data: { action: "change->color-icon-picker#handleParentChange" } %>
         <% end %>
+
+        <%# Folders: only meaningful for top-level categories. %>
+        <% unless category.subcategory? %>
+          <label class="flex items-start gap-2 pt-1">
+            <%= f.check_box :folder, class: "checkbox mt-0.5" %>
+            <span class="text-sm">
+              <span class="text-primary font-medium"><%= t(".folder_label") %></span>
+              <span class="block text-secondary text-xs"><%= t(".folder_hint") %></span>
+            </span>
+          </label>
+        <% end %>
       </div>
     </section>
 
