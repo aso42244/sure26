@@ -17,6 +17,7 @@ class Category < ApplicationRecord
   validates :name, uniqueness: { scope: :family_id }
 
   validate :category_level_limit
+  validate :only_top_level_can_be_folder
 
   before_save :inherit_color_from_parent
 
@@ -317,6 +318,23 @@ class Category < ApplicationRecord
     parent_id.present? && parent.present?
   end
 
+  # A "folder" is a top-level category with budgeting turned off: it groups its
+  # subcategories on the budget screen but has no budget of its own. Its
+  # subcategories become independent budget lines (see BudgetCategory).
+  def folder?
+    !budgetable? && parent_id.nil?
+  end
+
+  # Virtual attribute for the edit form: a "folder" is the inverse of
+  # budgetable. Checking the box turns budgeting off for this category.
+  def folder
+    !budgetable?
+  end
+
+  def folder=(value)
+    self.budgetable = !ActiveModel::Type::Boolean.new.cast(value)
+  end
+
   def name_with_parent
     return name unless subcategory?
 
@@ -351,6 +369,14 @@ class Category < ApplicationRecord
     def category_level_limit
       if (subcategory? && parent&.subcategory?) || (parent? && subcategory?)
         errors.add(:parent, "can't have more than 2 levels of subcategories")
+      end
+    end
+
+    # Only a top-level category can be a folder. A subcategory always carries
+    # its own budget line, so it must stay budgetable.
+    def only_top_level_can_be_folder
+      if !budgetable? && parent_id.present?
+        errors.add(:budgetable, "can only be turned off for top-level categories")
       end
     end
 

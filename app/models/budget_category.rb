@@ -150,9 +150,69 @@ class BudgetCategory < ApplicationRecord
     category.parent_id.present?
   end
 
-  # Returns true if this subcategory has no individual budget limit and should use parent's budget
+  # A "folder": a top-level category with budgeting turned off. It groups its
+  # subcategories but has no budget of its own -- shown as a read-only roll-up.
+  def folder?
+    category.present? && category.folder?
+  end
+
+  # True when this subcategory's parent is a folder. Such a subcategory is an
+  # independent budget line (a folder has no pool to share), so it never
+  # "inherits" and it counts directly toward allocation.
+  def parent_is_folder?
+    return false unless subcategory?
+    parent_budget_category&.category&.folder? || false
+  end
+
+  # Whether this row's budgeted amount counts on its own toward the budget's
+  # total allocation: a normal top-level category, or a subcategory whose
+  # parent is a folder. Folder parents contribute nothing themselves; a
+  # subcategory sharing a (non-folder) parent's pool is counted via the parent.
+  def counts_as_budget_root?
+    return false if folder?
+    return true unless subcategory?
+    parent_is_folder?
+  end
+
+  # Returns true if this subcategory has no individual budget limit and should
+  # use the parent's budget. A folder's child never inherits -- it always
+  # carries its own line.
   def inherits_parent_budget?
-    subcategory? && (self[:budgeted_spending].nil? || self[:budgeted_spending] == 0)
+    subcategory? && !parent_is_folder? && (self[:budgeted_spending].nil? || self[:budgeted_spending] == 0)
+  end
+
+  # Read-only roll-up of a folder's children, for display on the folder row.
+  def folder_children
+    folder? ? subcategories.to_a : []
+  end
+
+  def folder_spent
+    folder_children.sum { |c| c.actual_spending || 0 }
+  end
+
+  def folder_budgeted
+    folder_children.sum { |c| c[:budgeted_spending] || 0 }
+  end
+
+  def folder_available
+    folder_children.sum { |c| c.available_to_spend || 0 }
+  end
+
+  def folder_spent_money
+    Money.new(folder_spent, budget.family.currency)
+  end
+
+  def folder_budgeted_money
+    Money.new(folder_budgeted, budget.family.currency)
+  end
+
+  def folder_available_money
+    Money.new(folder_available, budget.family.currency)
+  end
+
+  def folder_bar_width_percent
+    return 0 if folder_budgeted.zero?
+    [ (folder_spent.to_f / folder_budgeted) * 100, 100 ].min
   end
 
   # Returns the budgeted spending to display in UI
@@ -174,6 +234,10 @@ class BudgetCategory < ApplicationRecord
   end
 
   def available_to_spend
+    # A folder has no budget of its own; surface its children's combined
+    # remaining so any tooltip/aggregate that reads this stays sensible.
+    return folder_available if folder?
+
     # Rollover replaces the plain calc entirely for this category: the running
     # balance (opening + this period's budgeted amount - actual spend) IS the
     # available-to-spend figure, positive or negative. Applies to a top-level
@@ -241,10 +305,12 @@ class BudgetCategory < ApplicationRecord
   end
 
   def over_budget?
+    return false if folder?
     available_to_spend.negative?
   end
 
   def budgeted?
+    return false if folder?
     display_budgeted_spending.to_d.positive?
   end
 
@@ -261,10 +327,14 @@ class BudgetCategory < ApplicationRecord
   end
 
   def any_over_budget?
+    return false if folder?
     unbudgeted_with_spending? || over_budget_with_budget?
   end
 
   def visible_on_track?
+    # A folder is always shown (on the on-track side) as a grouping header for
+    # its children; its own status is not meaningful.
+    return true if folder?
     return false unless on_track?
 
     # Subcategories inheriting parent budget are hidden until they have spending.
@@ -325,6 +395,9 @@ class BudgetCategory < ApplicationRecord
     def sync_parent_budgeted_spending!(previous_budgeted_spending:)
       parent_budget_category = budget.budget_categories.where(category_id: category.parent_id).lock.first
       return unless parent_budget_category
+      # A folder has no budget of its own -- its children are independent lines,
+      # so never roll a child's amount up into the folder parent.
+      return if parent_budget_category.category.folder?
 
       sibling_budgeted_spending = budget.budget_categories
         .joins(:category)

@@ -388,7 +388,11 @@ class Budget < ApplicationRecord
   # Budget allocations: How much user has budgeted for all parent categories combined
   # =============================================================================
   def allocated_spending
-    budget_categories.reject { |bc| bc.subcategory? }.sum(&:budgeted_spending)
+    # Sum the budget "roots": normal top-level categories plus the children of
+    # folders (which are independent lines). Folder parents contribute nothing
+    # themselves, and subcategories that share a non-folder parent's pool are
+    # already counted through that parent.
+    budget_categories.select(&:counts_as_budget_root?).sum(&:budgeted_spending)
   end
 
   def allocated_percent

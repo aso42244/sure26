@@ -1,5 +1,10 @@
 <%# locals: (group:, parent_visible:, over_budget_mode: false) %>
 
+<% if group.budget_category.folder? && !over_budget_mode %>
+  <%# Folder: collapsible header with a read-only roll-up of its children. %>
+  <%= render "budgets/folder_group", group: group %>
+<% else %>
+
 <% if parent_visible %>
   <div class="py-2">
     <%= render "budget_categories/budget_category",
@@ -25,4 +30,5 @@
         show_budget_meta: (over_budget_mode ? budget_subcategory.over_budget_with_budget? : true) %>
     </div>
   <% end %>
+<% end %>
 <% end %>

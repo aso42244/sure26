@@ -72,6 +72,7 @@ en:
       percent_set: "%{percent} set"
     budget_category_form:
       monthly_average: "%{amount}/m avg"
+      folder_note: "Folder — no budget"
       rollover_balance: "Balance: %{amount}"
       rollover_balance_label: "Balance"
       rollover_balance_title: "What this category currently holds. Type a number to set it directly — useful for seeding an envelope with money it already has."

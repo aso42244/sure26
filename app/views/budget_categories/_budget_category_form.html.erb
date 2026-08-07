@@ -12,6 +12,10 @@
   </div>
 
   <div class="ml-auto">
+    <% if budget_category.folder? %>
+      <%# A folder has no budget of its own; nothing to edit here. %>
+      <p class="text-xs text-subdued pt-2 whitespace-nowrap"><%= t("budget_categories.budget_category_form.folder_note") %></p>
+    <% else %>
     <%= form_with model: [budget_category.budget, budget_category], data: { controller: "auto-submit-form preserve-focus" } do |f| %>
       <div class="flex items-start gap-3">
         <div class="form-field w-[120px]">
@@ -60,6 +64,7 @@
           </div>
         </div>
       <% end %>
+    <% end %>
     <% end %>
   </div>
 </div>

@@ -1,0 +1,62 @@
+<%# locals: (group:) %>
+
+<% folder = group.budget_category %>
+<% folder_display_name = folder.category.display_name %>
+
+<div data-controller="budget-folder" data-budget-folder-key-value="<%= folder.category_id %>">
+  <%# Folder header: clickable toggle, read-only roll-up of its children (no editing). %>
+  <div class="py-2">
+    <button type="button" class="group flex w-full items-center gap-3 px-4 text-left" data-action="budget-folder#toggle">
+      <span data-budget-folder-target="chevron" class="text-subdued flex-shrink-0 transition-transform duration-200">
+        <%= icon("chevron-down", size: "sm") %>
+      </span>
+
+      <div class="h-7 w-7 flex-shrink-0 rounded-full flex justify-center items-center"
+            style="
+              background-color: color-mix(in oklab, <%= folder.category.color %> 10%, transparent);
+              color: <%= folder.category.color %>;">
+        <% if folder.category.lucide_icon %>
+          <%= icon(folder.category.lucide_icon, color: "current", size: "sm") %>
+        <% else %>
+          <%= render DS::FilledIcon.new(variant: :text, hex_color: folder.category.color, text: folder_display_name, size: "sm", rounded: true) %>
+        <% end %>
+      </div>
+
+      <h3 class="min-w-0 flex-1 font-medium text-primary truncate"><%= folder_display_name %></h3>
+
+      <%# Read-only roll-up of the folder's children. %>
+      <div class="flex items-center gap-x-4 flex-shrink-0 text-sm whitespace-nowrap">
+        <span>
+          <span class="text-secondary"><%= t("reports.budget_performance.spent") %>:</span>
+          <span class="font-medium text-primary privacy-sensitive"><%= format_money(folder.folder_spent_money) %></span>
+        </span>
+        <span>
+          <span class="text-secondary"><%= t("reports.budget_performance.budgeted") %>:</span>
+          <span class="font-medium text-primary privacy-sensitive"><%= format_money(folder.folder_budgeted_money) %></span>
+        </span>
+        <span>
+          <% if folder.folder_available.negative? %>
+            <span class="text-secondary"><%= t("reports.budget_performance.over_by") %>:</span>
+            <span class="font-medium text-red-500 privacy-sensitive"><%= format_money(folder.folder_available_money.abs) %></span>
+          <% else %>
+            <span class="text-secondary"><%= t("reports.budget_performance.remaining") %>:</span>
+            <span class="font-medium text-green-500 privacy-sensitive"><%= format_money(folder.folder_available_money) %></span>
+          <% end %>
+        </span>
+      </div>
+    </button>
+  </div>
+
+  <%# Collapsible children. %>
+  <div data-budget-folder-target="children">
+    <% group.budget_subcategories.each do |budget_subcategory| %>
+      <%= render "shared/ruler" %>
+      <div class="py-2 w-full flex items-start">
+        <div class="ml-8 pt-4 flex items-center justify-center text-subdued">
+          <%= icon "corner-down-right" %>
+        </div>
+        <%= render "budget_categories/budget_category", budget_category: budget_subcategory, show_budget_meta: true %>
+      </div>
+    <% end %>
+  </div>
+</div>
