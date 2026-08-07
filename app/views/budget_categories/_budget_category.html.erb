@@ -38,8 +38,7 @@
             </span>
           <% end %>
 
-          <%# Fixed-width columns so Spent / Budgeted / Remaining line up vertically across rows for scanning %>
-          <div class="grid grid-cols-[8.5rem_12rem_10.5rem] flex-shrink-0 text-sm whitespace-nowrap">
+          <div class="flex items-center gap-x-4 flex-shrink-0 text-sm whitespace-nowrap">
             <span>
               <span class="text-secondary"><%= t("reports.budget_performance.spent") %>:</span>
               <span class="font-medium text-primary privacy-sensitive"><%= format_money(budget_category.actual_spending_money) %></span>
@@ -53,8 +52,6 @@
                   <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-tint-5 text-secondary"><%= t("reports.budget_performance.shared") %></span>
                 <% end %>
               </span>
-            <% else %>
-              <span></span>
             <% end %>
 
             <span>
