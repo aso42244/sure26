@@ -122,6 +122,15 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to categories_url
   end
 
+  test "index shows a folder indicator for folder categories" do
+    folder = Category.create!(name: "IconFolder #{Time.now.to_f}", family: @family, lucide_icon: "shapes", budgetable: false)
+
+    get categories_url
+
+    assert_response :success
+    assert_select "#category_#{folder.id} span[title=?]", "Folder (no budget)", count: 1
+  end
+
   test "marking a top-level category as a folder turns budgeting off" do
     category = Category.create!(name: "Folderable #{Time.now.to_f}", family: @family, lucide_icon: "shapes")
 
