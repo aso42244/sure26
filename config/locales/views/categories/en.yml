@@ -6,6 +6,7 @@ en:
     category:
       delete: Delete category
       edit: Edit category
+      folder_indicator: "Folder (no budget)"
     create:
       success: Category created successfully
     destroy:
